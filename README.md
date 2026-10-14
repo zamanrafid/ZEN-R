@@ -17,6 +17,11 @@ So ZORO AI's free path is: **AI stills + cinematic motion + voiceover**, all fre
 3. **Motion** — FFmpeg Ken Burns zoom/drift rendered on your PC (labeled as animated stills, never as AI diffusion).
 4. **Voiceover** — tries free hosted TTS; if refused, auto-falls back to **eSpeak NG** (free, offline, robotic).
 5. **Export** — 720×1280 / 1280×720 / 720×720 MP4 + SRT, zero watermark from ZORO AI.
+6. **Hyperframes Cinematic (NEW, free)** — storyboard → deterministic HTML/GSAP
+   composition (`POST /api/projects/[id]/hyperframes`) with kinetic captions +
+   embedded stills/narration → render on your PC with
+   `npx hyperframes render -o zoro-hyperframes.mp4` (Chrome + FFmpeg).
+   Best for horror/mystery typography, title cards, and captioned narration.
 
 Verified end-to-end on 2026-10-09: 20.0s 720×1280 h264+aac MP4 with voiceover,
 built for $0 on an i3/8GB Windows 10 PC. Free-tier caveats (shown in-app, never hidden):

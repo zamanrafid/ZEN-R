@@ -42,6 +42,18 @@ export const PROVIDER_META: Array<{
     resolutions: ["server-dependent"]
   },
   {
+    id: "hyperframes",
+    label: "Hyperframes Cinematic (HTML motion + captions, 100% free)",
+    kind: "hyperframes",
+    requiresApiKey: false,
+    costNote: "100% FREE: deterministic HTML/GSAP motion graphics + kinetic captions rendered on your PC with the Hyperframes CLI (Chrome + FFmpeg). Best for title cards, horror/mystery typography, and captioned narration. Honest label: code-driven motion, not AI video diffusion.",
+    supportsReferenceImages: true,
+    referenceNote: "Approved stills are embedded as composition assets; character consistency comes from reusing the same stills across scenes.",
+    maxClipSec: 10,
+    supportedAspects: ["9:16", "16:9", "1:1"],
+    resolutions: ["1080x1920", "1920x1080", "1080x1080"]
+  },
+  {
     id: "replicate",
     label: "Replicate (bring your own model)",
     kind: "replicate",

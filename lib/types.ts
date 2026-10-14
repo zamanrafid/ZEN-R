@@ -135,7 +135,7 @@ export interface Project {
 export interface ProviderInfo {
   id: string;
   label: string;
-  kind: "slideshow" | "worker" | "replicate" | "huggingface";
+  kind: "slideshow" | "worker" | "replicate" | "huggingface" | "hyperframes";
   configured: boolean;
   requiresApiKey: boolean;
   costNote: string;

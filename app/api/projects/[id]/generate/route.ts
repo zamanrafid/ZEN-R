@@ -66,6 +66,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ job }, { status: 201 });
   }
 
+  if (provider.id === "hyperframes") {
+    job.status = "failed";
+    job.error =
+      "Hyperframes projects don't use per-scene clips — press 'Export Hyperframes (free cinematic)' in Assemble & export, then run: npx hyperframes render -o zoro-hyperframes.mp4";
+    job.logs.push(job.error);
+    p.jobs.push(job);
+    await saveProject(p);
+    await indexJob(p.id, job.id);
+    return NextResponse.json({ job }, { status: 201 });
+  }
+
   if (provider.requiresApiKey && !provider.configured) {
     return NextResponse.json(
       { error: `${provider.label} is not configured. ${provider.missing} No request was sent and nothing was charged. Tip: switch the project to "Free Movie Mode" for a 100% free pipeline.` },

@@ -223,6 +223,20 @@ export default function Studio({ params }: { params: { id: string } }) {
     finally { setBusy(""); }
   }
 
+  async function exportHyperframes() {
+    setBusy("hyperframes"); setError(""); setNotice("");
+    try {
+      const { ok, status, data } = await fetchJson(
+        `/api/projects/${id}/hyperframes`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) },
+        120000
+      );
+      if (!ok) throw new Error(apiError(status, data, "Hyperframes export failed."));
+      setNotice(`Hyperframes composition exported (${(data as { durationSec?: number }).durationSec ?? "?"}s): ${(data as { exportPath?: string }).exportPath ?? ""}. Render on your PC: npx hyperframes render -o zoro-hyperframes.mp4`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Hyperframes export failed."); }
+    finally { setBusy(""); }
+  }
+
   function speak(text: string) {
     if (!("speechSynthesis" in window)) { setError("This browser has no speech synthesis support."); return; }
     window.speechSynthesis.cancel();
@@ -674,7 +688,7 @@ export default function Studio({ params }: { params: { id: string } }) {
             const latest = jobs[jobs.length - 1];
             const stillJob = [...jobs].reverse().find((j) => j.providerId === "free-still");
             const chars = s.characterIds.map((cid) => project.characters.find((c) => c.id === cid)).filter(Boolean);
-            const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : "Generate clip (paid)";
+            const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : project.providerId === "hyperframes" ? "Export Hyperframes scene" : "Generate clip (paid)";
             const tag = latest?.providerId === "free-still" ? " (free still)" : latest?.providerId === "slideshow" ? " (free)" : latest?.providerId === "worker" || latest?.providerId === "worker-still" ? " (your model)" : "";
             return (
               <li key={s.id} className="rounded-xl border border-slate-700 p-4">
@@ -872,6 +886,7 @@ export default function Studio({ params }: { params: { id: string } }) {
         <p className="mt-1 text-[11px] text-muted">Best = 1080p stills + sharper encode. Slower on weak PCs — Balanced is the sweet spot.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button className="btn-primary" disabled={busy === "assemble"} onClick={assemble}>{busy === "assemble" ? "Rendering…" : "Render final MP4"}</button>
+          <button className="btn-ghost text-sm" disabled={busy === "hyperframes"} onClick={exportHyperframes}>{busy === "hyperframes" ? "Exporting…" : "🎬 Export Hyperframes (free cinematic)"}</button>
           {project.output?.path && <a className="btn-ghost text-sm" href={`/api/media/${project.output.path}`} download>Download MP4</a>}
           {project.output?.srtPath && <a className="btn-ghost text-sm" href={`/api/media/${project.output.srtPath}`} download>Download SRT</a>}
         </div>
