@@ -247,21 +247,21 @@ export default function Home() {
   }
 
   const stepRow = (label: string, s: StepState, extra = "") => (
-    <div className="flex items-center gap-2 text-sm">
-      <span className={s === "done" ? "text-emerald-300" : s === "doing" ? "text-blue-300" : s === "failed" ? "text-red-300" : "text-slate-600"}>
-        {s === "done" ? "●" : s === "doing" ? "◐" : s === "failed" ? "●" : "○"}
+    <div className="flex items-center gap-3 text-sm">
+      <span className={`step-dot ${s === "done" ? "step-done" : s === "doing" ? "step-doing" : s === "failed" ? "step-failed" : "step-todo"}`}>
+        {s === "done" ? "✓" : s === "doing" ? "◐" : s === "failed" ? "!" : "○"}
       </span>
-      <span className={s === "todo" ? "text-slate-500" : "text-slate-200"}>{label}</span>
-      {extra && <span className="text-xs text-muted">{extra}</span>}
+      <span className={s === "todo" ? "text-slate-500" : "text-slate-200 font-medium"}>{label}</span>
+      {extra && <span className="ml-auto text-xs text-muted">{extra}</span>}
     </div>
   );
 
   return (
     <div className="flex min-h-screen bg-ink text-paper">
       {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800/60 p-4 md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800/60 bg-slate-900/40 p-4 md:flex">
         <ZoroLogo size={34} />
-        <button onClick={reset} className="btn-ghost mt-5 w-full text-sm">+ New video</button>
+        <button onClick={reset} className="btn-primary mt-5 w-full text-sm">+ New video</button>
         <p className="label mt-6">My videos</p>
         <div className="flex-1 space-y-1 overflow-y-auto">
           {videos.length === 0 && <p className="text-xs text-muted">Nothing yet — your movies will appear here.</p>}
@@ -286,11 +286,19 @@ export default function Home() {
 
         {phase === "idle" && (
           <>
-            <h1 className="mt-10 text-center text-2xl font-bold sm:text-3xl">
-              What story should we <span className="grad-text">film today?</span>
-            </h1>
-            <p className="mt-2 text-center text-sm text-muted">Describe it. Get a finished video file. Free.</p>
-            <div className="card mt-6">
+            <div className="hero-glow anim-fade-up -mx-4 rounded-3xl px-4 pt-6 sm:-mx-6 sm:px-6">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <span className="pill">✨ 100% free pipeline</span>
+                <span className="pill">🚫 No watermark</span>
+                <span className="pill">🎙 Bangla voice</span>
+                <span className="pill">🎬 Hyperframes cinematic</span>
+              </div>
+              <h1 className="mt-5 text-center text-3xl font-extrabold leading-tight sm:text-4xl">
+                What story should we <span className="grad-text">film today?</span>
+              </h1>
+              <p className="mt-2 text-center text-sm text-muted">Describe it. Get a finished video file. Free, on your PC.</p>
+            </div>
+            <div className="card grad-border prompt-glow anim-fade-up-1 mt-6">
               <textarea
                 className="min-h-[110px] w-full resize-y bg-transparent text-base outline-none placeholder:text-slate-500"
                 placeholder="A detective in old Dhaka uncovers a 200-year-old mystery…"
@@ -344,7 +352,7 @@ export default function Home() {
         {phase !== "idle" && (
           <>
             <h1 className="mt-6 truncate text-xl font-bold">{projectName || "Making your video…"}</h1>
-            <div className="card mt-4 space-y-2">
+            <div className="card anim-fade-up mt-4 space-y-3">
               {stepRow("Story & scenes", steps.story)}
               {stepRow(`Pictures`, steps.images, counts.images[1] ? `${counts.images[0]}/${counts.images[1]}` : "")}
               {stepRow(`Motion clips`, steps.clips, counts.clips[1] ? `${counts.clips[0]}/${counts.clips[1]}` : "")}
@@ -358,8 +366,10 @@ export default function Home() {
             )}
             {error && <div className="card mt-4 border-red-500/40"><p className="break-words text-sm text-red-300">{error}</p></div>}
             {result.mp4 && (
-              <div className="card mt-4 border-emerald-500/30">
-                <video controls src={result.mp4} className="w-full rounded-xl" />
+              <div className="card anim-fade-up mt-4 border-emerald-500/30">
+                <div className="overflow-hidden rounded-xl border border-slate-700/60">
+                  <video controls src={result.mp4} className="w-full" />
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <a className="btn-primary text-sm" href={result.mp4} download={`${projectName || "zoro-video"}.mp4`}>Download MP4</a>
                   {result.srt && <a className="btn-ghost text-sm" href={result.srt} download>Captions (SRT)</a>}

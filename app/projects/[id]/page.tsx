@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ZoroLogo, StatusBadge } from "@/components/ui";
+import { ZoroLogo, StatusBadge, SectionHead } from "@/components/ui";
 import { fetchJson, apiError } from "@/lib/client";
 import { MAX_PROMPT } from "@/lib/validate";
 import type { Project, GenerationJob } from "@/lib/types";
@@ -487,11 +487,13 @@ export default function Studio({ params }: { params: { id: string } }) {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <ZoroLogo />
-        <div className="flex gap-2">
-          <Link href="/" className="btn-ghost text-sm">← Dashboard</Link>
-          <button className="btn-ghost text-sm" onClick={() => load(true)}>Reload</button>
+      <header className="sticky top-0 z-30 -mx-4 border-b border-slate-800/60 bg-[#0B1120]/85 px-4 py-3 backdrop-blur-lg sm:-mx-5 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ZoroLogo />
+          <div className="flex gap-2">
+            <Link href="/" className="btn-ghost text-sm">← Dashboard</Link>
+            <button className="btn-ghost text-sm" onClick={() => load(true)}>⟳ Reload</button>
+          </div>
         </div>
       </header>
 
@@ -513,8 +515,8 @@ export default function Studio({ params }: { params: { id: string } }) {
       )}
 
       {/* 1. Prompt + storyboard */}
-      <section className="card mt-5">
-        <h2 className="text-lg font-bold">1 · Prompt & storyboard</h2>
+      <section className="card anim-fade-up mt-5">
+        <SectionHead num="1" title="Prompt & storyboard" hint="Default 20s → four 5s scenes. Planning is free and never spends generation budget." />
         <div className="mt-3">
           <label className="label" htmlFor="sprompt">Story prompt</label>
           <textarea id="sprompt" className="input min-h-[100px]" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
@@ -539,13 +541,8 @@ export default function Studio({ params }: { params: { id: string } }) {
       </section>
 
       {/* 1b. YouTube / video → Shorts */}
-      <section className="card mt-5 border-purple-500/30">
-        <h2 className="text-lg font-bold">YouTube / Video → Shorts (free)</h2>
-        <p className="mt-1 text-xs text-muted">
-          Cut vertical 9:16 Shorts from any public YouTube video or your own video file.
-          Every Short joins as a scene — preview, voice, export all work.
-          Only import videos you own or have rights to.
-        </p>
+      <section className="card anim-fade-up mt-5 border-purple-500/30">
+        <SectionHead num="▶" title="YouTube / Video → Shorts (free)" hint="Cut vertical 9:16 Shorts from any public YouTube video or your own file. Only import videos you own or have rights to." />
         <label className="label mt-3" htmlFor="yturl">YouTube link</label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input id="yturl" className="input" placeholder="https://youtube.com/watch?v=… / shorts / youtu.be" value={ytUrl} onChange={(e) => setYtUrl(e.target.value)} />
@@ -610,12 +607,8 @@ export default function Studio({ params }: { params: { id: string } }) {
       </section>
 
       {/* 2. Characters */}
-      <section className="card mt-5">
-        <h2 className="text-lg font-bold">2 · Character Bible — approve before generating</h2>
-        <p className="mt-1 text-xs text-muted">
-          Approved reference images are reused in every scene with that character. Identity preservation depends on the model —
-          reference-capable video models do their best but perfection is never promised.
-        </p>
+      <section className="card anim-fade-up mt-5">
+        <SectionHead num="2" title="Character Bible — approve before generating" hint="Approved reference images are reused in every scene with that character." />
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {(project.characters ?? []).map((c) => (
             <div key={c.id} className={`rounded-xl border p-4 ${c.approved ? "border-emerald-500/40" : "border-slate-700"}`}>
@@ -670,12 +663,8 @@ export default function Studio({ params }: { params: { id: string } }) {
       </section>
 
       {/* 3. Scenes */}
-      <section className="card mt-5">
-        <h2 className="text-lg font-bold">3 · Scenes — generate, review, regenerate individually</h2>
-        <p className="mt-1 text-xs text-muted">
-          100% free path: make a <b>free still</b> per scene (AI image, no key), then render clips with motion on your PC.
-          {project.providerId === "slideshow" && " This project uses Free Movie Mode — clips render automatically from stills."}
-        </p>
+      <section className="card anim-fade-up mt-5">
+        <SectionHead num="3" title="Scenes — generate, review, regenerate" hint="100% free path: free still per scene, then motion clips on your PC." />
         <div className="mt-2">
           <button className="btn-ghost text-xs" disabled={busy === "allstills"} onClick={generateAllStills}>
             {busy === "allstills" ? "Queueing…" : "Generate free stills for all scenes"}
@@ -691,7 +680,7 @@ export default function Studio({ params }: { params: { id: string } }) {
             const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : project.providerId === "hyperframes" ? "Export Hyperframes scene" : "Generate clip (paid)";
             const tag = latest?.providerId === "free-still" ? " (free still)" : latest?.providerId === "slideshow" ? " (free)" : latest?.providerId === "worker" || latest?.providerId === "worker-still" ? " (your model)" : "";
             return (
-              <li key={s.id} className="rounded-xl border border-slate-700 p-4">
+              <li key={s.id} className="rounded-xl border border-slate-700/80 bg-slate-900/30 p-4 transition-colors hover:border-violet-500/40">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{s.index + 1}. {s.title} <span className="text-xs text-muted">· {s.durationSec}s</span></p>
                   <div className="flex flex-wrap gap-1">
@@ -791,8 +780,8 @@ export default function Studio({ params }: { params: { id: string } }) {
       </section>
 
       {/* 4. Narration */}
-      <section className="card mt-5">
-        <h2 className="text-lg font-bold">4 · Narration & captions (optional)</h2>
+      <section className="card anim-fade-up mt-5">
+        <SectionHead num="4" title="Narration & captions" hint="Natural Bangla + English voices, free. Or record your own." />
         <label className="label mt-3" htmlFor="script">Narration script</label>
         <textarea id="script" className="input min-h-[100px]" value={script} onChange={(e) => setScript(e.target.value)} />
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -840,12 +829,8 @@ export default function Studio({ params }: { params: { id: string } }) {
       </section>
 
       {/* 5. Export */}
-      <section className="card mt-5 border-blue-500/30">
-        <h2 className="text-lg font-bold">★ Auto Movie — full video with one button</h2>
-        <p className="mt-1 text-xs text-muted">
-          Storyboard → images → video clips → voice → final MP4 — everything automatic.
-          Finished steps are skipped; if it stops, press again to resume from there.
-        </p>
+      <section className="card grad-border anim-fade-up mt-5">
+        <SectionHead num="★" title="Auto Movie — full video with one button" hint="Storyboard → images → clips → voice → final MP4. Finished steps are skipped; press again to resume." />
         <button className="btn-primary mt-3 w-full sm:w-auto" disabled={busy === "auto"} onClick={autoMake}>
           {busy === "auto" ? "Rendering your movie… don't close this page" : "✨ Make my Auto Movie"}
         </button>
@@ -856,9 +841,9 @@ export default function Studio({ params }: { params: { id: string } }) {
         )}
       </section>
 
-      <section className="card mt-5">
-        <h2 className="text-lg font-bold">5 · Assemble & export</h2>
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+      <section className="card anim-fade-up mt-5">
+        <SectionHead num="5" title="Assemble and export" hint="MP4 + SRT, watermark-free from ZORO AI." />
+                <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={project.burnCaptions} onChange={async (e) => {
               const r = await fetch(`/api/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ burnCaptions: e.target.checked }) });
