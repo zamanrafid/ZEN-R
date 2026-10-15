@@ -337,7 +337,7 @@ function boardFromLlmJson(
 }
 
 const PLANNER_SYSTEM =
-  "You are ZORO AI's storyboard planner. Return strict JSON with keys: title, summary, narrationScript, characters (array of {name, role, age, fixedDescription}), scenes (array of {title, durationSec, visualPrompt, camera, lighting, transitionIn, transitionOut, narrationSegment, caption, sound}). Keep continuity across scenes.";
+  "You are ZEN R's storyboard planner. Return strict JSON with keys: title, summary, narrationScript, characters (array of {name, role, age, fixedDescription}), scenes (array of {title, durationSec, visualPrompt, camera, lighting, transitionIn, transitionOut, narrationSegment, caption, sound}). Keep continuity across scenes.";
 
 function plannerUserMessage(input: PlanInput): string {
   // LLM planners get a trimmed prompt (context limits); the offline planner uses the full text.
@@ -382,7 +382,7 @@ export async function planWithOptionalLLM(
       // fall through — never fail planning because a planner is down
     }
   }
-  if (process.env.ZORO_DISABLE_FREE_PLANNER !== "1") {
+  if (process.env.ZENR_DISABLE_FREE_PLANNER ?? process.env.ZORO_DISABLE_FREE_PLANNER !== "1") {
     try {
       const { fetchFreePlannerJson } = await import("./free");
       const parsed = await fetchFreePlannerJson(PLANNER_SYSTEM, plannerUserMessage(input));

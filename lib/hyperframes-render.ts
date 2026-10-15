@@ -9,7 +9,7 @@ export function hyperframesExportDir(projectId: string): string {
 }
 
 export function hyperframesMp4Rel(projectId: string): string {
-  return `media/hyperframes/${projectId}/zoro-hyperframes.mp4`.replace(/\\/g, "/");
+  return `media/hyperframes/${projectId}/zen-r-hyperframes.mp4`.replace(/\\/g, "/");
 }
 
 async function fileExists(abs: string): Promise<boolean> {
@@ -35,7 +35,7 @@ export function renderHyperframesExport(projectId: string, timeoutMs = 10 * 60 *
   const cwd = hyperframesExportDir(projectId);
   return new Promise((resolve) => {
     const log: string[] = [];
-    const child = spawn("npx", ["--yes", "hyperframes@latest", "render", "-o", "zoro-hyperframes.mp4"], {
+    const child = spawn("npx", ["--yes", "hyperframes@latest", "render", "-o", "zen-r-hyperframes.mp4"], {
       cwd,
       shell: true,
       windowsHide: true
@@ -53,7 +53,7 @@ export function renderHyperframesExport(projectId: string, timeoutMs = 10 * 60 *
     });
     child.on("close", async (code) => {
       clearTimeout(timer);
-      const abs = path.join(cwd, "zoro-hyperframes.mp4");
+      const abs = path.join(cwd, "zen-r-hyperframes.mp4");
       const exists = await fileExists(abs);
       if (code === 0 && exists) {
         resolve({ ok: true, mp4Rel: hyperframesMp4Rel(projectId), log: log.join("\n").slice(-4000) });
@@ -73,7 +73,7 @@ export async function hyperframesRenderStatus(projectId: string): Promise<{ expo
     const st = await fs.stat(path.join(dir, "index.html"));
     exported = st.isFile();
   } catch { exported = false; }
-  const abs = path.join(dir, "zoro-hyperframes.mp4");
+  const abs = path.join(dir, "zen-r-hyperframes.mp4");
   const rendered = await fileExists(abs);
   return { exported, rendered, mp4Rel: rendered ? hyperframesMp4Rel(projectId) : undefined };
 }

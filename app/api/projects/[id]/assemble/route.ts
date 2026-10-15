@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     await saveProject(p);
     return NextResponse.json({
       project: p,
-      note: "Export has no ZORO AI watermark. Third-party provider watermarks (if any) are never stripped — see provider terms."
+      note: "Export has no ZEN R watermark. Third-party provider watermarks (if any) are never stripped — see provider terms."
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Assembly failed.";

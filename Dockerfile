@@ -1,4 +1,4 @@
-# ZORO AI — self-host with Docker (recommended for real use: FFmpeg included,
+# ZEN R — self-host with Docker (recommended for real use: FFmpeg included,
 # no function timeouts, files persist in a volume).
 FROM node:20-slim
 

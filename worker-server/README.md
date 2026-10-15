@@ -1,6 +1,6 @@
 # Your own model server (no dependence on anyone)
 
-ZORO AI talks to YOUR hardware through two plain endpoints. Any program that
+ZEN R talks to YOUR hardware through two plain endpoints. Any program that
 answers them — Python, Node, ComfyUI wrapper, a GPU box in another city —
 becomes your private image/video backend.
 
@@ -32,13 +32,13 @@ set SD_MODEL=segmind/tiny-sd
 uvicorn example:app --host 127.0.0.1 --port 8188
 ```
 
-Then in ZORO AI `.env.local`:
+Then in ZEN R `.env.local`:
 
 ```
 WORKER_URL=http://127.0.0.1:8188
 ```
 
-Restart ZORO AI, pick provider **"Your own model server"**, generate.
+Restart ZEN R, pick provider **"Your own model server"**, generate.
 Stills come from YOUR model. No account, no key, no per-image fee, no data
 leaving your machines (unless you host the worker elsewhere — your choice).
 

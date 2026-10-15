@@ -1,14 +1,14 @@
 import type { AspectRatio, Project, VisualStyle } from "./types";
 
 /**
- * ZORO AI Ultimate Cinematic Engine — Hyperframes, permanently integrated.
- * Turns a ZORO AI project into a deterministic Hyperframes HTML composition:
+ * ZEN R Ultimate Cinematic Engine — Hyperframes, permanently integrated.
+ * Turns a ZEN R project into a deterministic Hyperframes HTML composition:
  * scenes become timed cinematic sections with kinetic captions,
  * approved stills become embedded assets, narration becomes <audio>.
  *
  * Render options (all FREE, local, no key):
  *   1-click in-app:  POST /api/projects/[id]/hyperframes/render (Chrome + FFmpeg)
- *   manual on PC:    npx hyperframes render -o zoro-hyperframes.mp4 (inside export folder)
+ *   manual on PC:    npx hyperframes render -o zen-r-hyperframes.mp4 (inside export folder)
  */
 
 export type HyperframesThemeId = "horror" | "cinematic" | "neon-anime" | "gold-doc" | "midnight";
@@ -71,7 +71,7 @@ export const HYPERFRAMES_THEMES: Record<HyperframesThemeId, HyperframesTheme> = 
   }
 };
 
-/** Map ZORO visual style → ultimate theme. Explicit opts.theme always wins. */
+/** Map ZEN R visual style → ultimate theme. Explicit opts.theme always wins. */
 export function themeForStyle(style?: VisualStyle): HyperframesThemeId {
   if (style === "dark-mystery" || style === "historical") return "horror";
   if (style === "cinematic-documentary") return "cinematic";
@@ -106,7 +106,7 @@ export function hyperframesDuration(project: Project, orderedSceneIds: string[])
 
 /**
  * Build a deterministic Hyperframes index.html for the project.
- * stillUrlFor(slcPath) maps a ZORO still rel-path to a URL reachable
+ * stillUrlFor(slcPath) maps a ZEN R still rel-path to a URL reachable
  * from the composition (e.g. a copied asset path or /api/media/... URL).
  */
 export function buildHyperframesHtml(
@@ -120,7 +120,7 @@ export function buildHyperframesHtml(
   const narrationSrc = opts?.narrationSrc ?? project.narrationAudioPath ?? "";
   const theme = HYPERFRAMES_THEMES[opts?.theme ?? themeForStyle(project.settings.style)];
   const vertical = h > w;
-  const projectTitle = escapeHtml(project.title || project.name || "ZORO AI");
+  const projectTitle = escapeHtml(project.title || project.name || "ZEN R");
 
   let t = 0.5;
   const scenesHtml: string[] = [];
@@ -191,7 +191,7 @@ export function buildHyperframesHtml(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=${w}, height=${h}" />
-    <meta name="zoro-theme" content="${theme.id}" />
+    <meta name="zen-r-theme" content="${theme.id}" />
     <script src="assets/gsap.min.js"></script>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
@@ -221,7 +221,7 @@ export function buildHyperframesHtml(
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-duration="${total}" data-width="${w}" data-height="${h}">
-${audioHtml}      <div id="hf-intro" class="clip hf-intro" data-start="0" data-duration="0.5" data-track-index="1"><div id="hf-intro-title" class="hf-intro-title">${projectTitle}</div><div class="hf-intro-sub">Zoro AI &#183; ${theme.id}</div></div>
+${audioHtml}      <div id="hf-intro" class="clip hf-intro" data-start="0" data-duration="0.5" data-track-index="1"><div id="hf-intro-title" class="hf-intro-title">${projectTitle}</div><div class="hf-intro-sub">ZEN R &#183; ${theme.id}</div></div>
 ${scenesHtml.join("\n")}
 ${captionsHtml.join("\n")}
       <div class="hf-vignette"></div>
@@ -247,7 +247,7 @@ ${animJs}
 /** Sidecar config written next to index.html so renders are reproducible. */
 export function buildHyperframesManifest(project: Project, orderedSceneIds: string[], themeId: HyperframesThemeId) {
   return {
-    engine: "zoro-ai-ultimate",
+    engine: "zen-r-ultimate",
     hyperframes: ">=0.8.160",
     theme: themeId,
     projectId: project.id,
@@ -255,7 +255,7 @@ export function buildHyperframesManifest(project: Project, orderedSceneIds: stri
     aspect: project.settings.aspectRatio,
     durationSec: hyperframesDuration(project, orderedSceneIds),
     scenes: orderedSceneIds.length,
-    render: "npx hyperframes render -o zoro-hyperframes.mp4",
+    render: "npx hyperframes render -o zen-r-hyperframes.mp4",
     deterministic: true
   };
 }

@@ -10,13 +10,13 @@ let cachedDir: string | null = null;
 /** Writable data dir. Falls back to the OS temp dir on read-only hosts (e.g. serverless). */
 export function dataDir(): string {
   if (cachedDir) return cachedDir;
-  const configured = process.env.ZORO_DATA_DIR;
+  const configured = process.env.ZENR_DATA_DIR ?? process.env.ZORO_DATA_DIR;
   const primary = configured
     ? (path.isAbsolute(configured) ? configured : path.join(process.cwd(), configured))
     : path.join(process.cwd(), "data");
   cachedDir = writableDir(primary) ?? writableDir(path.join(os.tmpdir(), "zoro-ai-data")) ?? primary;
   if (cachedDir !== primary) {
-    console.warn(`[zoro-ai] storage ${primary} is not writable — using ephemeral ${cachedDir}. Files will NOT persist across restarts/deploys.`);
+    console.warn(`[zen-r] storage ${primary} is not writable — using ephemeral ${cachedDir}. Files will NOT persist across restarts/deploys.`);
   }
   return cachedDir;
 }

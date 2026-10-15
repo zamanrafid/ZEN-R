@@ -55,7 +55,7 @@ export const PROVIDER_META: Array<{
   },
   {
     id: "zoro-engine",
-    label: "Zoro Engine (100% own, offline, zero dependence)",
+    label: "ZEN R Engine (100% own, offline, zero dependence)",
     kind: "zoro",
     requiresApiKey: false,
     costNote: "100% OWN: procedural cinematic stills (pure TypeScript, no download) + motion/voice/render on your PC. No key, no account, no internet needed after install. Honest label: deterministic art, not AI diffusion.",
@@ -96,7 +96,7 @@ export const PROVIDER_META: Array<{
     requiresApiKey: true,
     costNote: "PAID — billed by Replicate per generation second. Check the model's page for current pricing before generating.",
     supportsReferenceImages: true,
-    referenceNote: "Reference-image support depends on the model you choose (e.g. image-to-video models accept an input image). ZORO AI passes approved reference stills when the model schema supports it; identity is never guaranteed.",
+    referenceNote: "Reference-image support depends on the model you choose (e.g. image-to-video models accept an input image). ZEN R passes approved reference stills when the model schema supports it; identity is never guaranteed.",
     maxClipSec: 5,
     supportedAspects: ["9:16", "16:9", "1:1"],
     resolutions: ["model-dependent"]

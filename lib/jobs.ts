@@ -99,7 +99,7 @@ function extFromUrl(u: string, fallback: string): string {
 }
 
 /** Advance exactly one job and persist. Handles free stills, slideshow clips, replicate. */
-/** Fetch a still from Zoro Engine (local) / A1111 / LocalAI / HF diffusers. */
+/** Fetch a still from ZEN R Engine (local) / A1111 / LocalAI / HF diffusers. */
 export async function fetchRemoteStill(
   kind: "zoro-still" | "a1111-still" | "localai-still" | "hf-still",
   p: Project,
@@ -180,8 +180,8 @@ export async function pollOneJob(projectId: string, jobId: string) {
     return { project: p, job };
   }
 
-  // REMOTE + ZORO stills: YOUR A1111 WebUI / YOUR LocalAI / hosted HF diffusers / Zoro Engine.
-  // All return raw image bytes → saved exactly like free stills. Zoro Engine is instant + offline.
+  // REMOTE + ZORO stills: YOUR A1111 WebUI / YOUR LocalAI / hosted HF diffusers / ZEN R Engine.
+  // All return raw image bytes → saved exactly like free stills. ZEN R Engine is instant + offline.
   if (job.providerId === "zoro-still" || job.providerId === "a1111-still" || job.providerId === "localai-still" || job.providerId === "hf-still") {
     if (!scene) {
       job.status = "failed";
@@ -191,7 +191,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
         job.status = "processing";
         job.progress = 30;
         const seed = job.seed ?? Math.floor(Math.random() * 100000);
-        if (job.providerId === "zoro-still") job.logs.push("Rendering still with Zoro Engine (offline)…");
+        if (job.providerId === "zoro-still") job.logs.push("Rendering still with ZEN R Engine (offline)…");
         else if (job.providerId === "a1111-still") job.logs.push("Requesting still from YOUR A1111 WebUI…");
         else if (job.providerId === "localai-still") job.logs.push("Requesting still from YOUR LocalAI…");
         else job.logs.push("Requesting still from hosted diffusers (HF Inference)…");

@@ -20,6 +20,6 @@ if not exist .venv (
 )
 if "%SD_MODEL%"=="" set SD_MODEL=segmind/tiny-sd
 echo [Worker] Cholche: http://127.0.0.1:8188 (bondho korte Ctrl+C)
-echo [Worker] ZORO AI .env.local-e likhun: WORKER_URL=http://127.0.0.1:8188
+echo [Worker] ZEN R .env.local-e likhun: WORKER_URL=http://127.0.0.1:8188
 uvicorn example:app --host 127.0.0.1 --port 8188
 pause

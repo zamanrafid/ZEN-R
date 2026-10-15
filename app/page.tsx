@@ -114,7 +114,7 @@ export default function Home() {
       if (h && h.serverless === true) {
         const go = confirm(
           "You are on the hosted demo link: projects vanish between steps and video cannot render here.\n\n" +
-          "Press OK to try anyway (storyboard only), or Cancel and run start-zoro.bat on your PC for the real thing."
+          "Press OK to try anyway (storyboard only), or Cancel and run start-zen-r.bat on your PC for the real thing."
         );
         if (!go) return;
       }
@@ -371,7 +371,7 @@ export default function Home() {
                   <video controls src={result.mp4} className="w-full" />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <a className="btn-primary text-sm" href={result.mp4} download={`${projectName || "zoro-video"}.mp4`}>Download MP4</a>
+                  <a className="btn-primary text-sm" href={result.mp4} download={`${projectName || "zen-r-video"}.mp4`}>Download MP4</a>
                   {result.srt && <a className="btn-ghost text-sm" href={result.srt} download>Captions (SRT)</a>}
                   {projectId && <Link className="btn-ghost text-sm" href={`/projects/${projectId}`}>Fine-tune in Studio</Link>}
                   <button className="btn-ghost text-sm" onClick={reset}>Make another</button>
@@ -389,7 +389,7 @@ export default function Home() {
         )}
 
         <footer className="mt-auto pt-10 text-center text-[11px] text-muted">
-          ZORO AI · Free Movie engine · No watermark ·{" "}
+          ZEN R · Free Movie engine · No watermark ·{" "}
           <Link href={projectId ? `/projects/${projectId}` : "/"} className="underline">Advanced Studio</Link>
         </footer>
       </main>

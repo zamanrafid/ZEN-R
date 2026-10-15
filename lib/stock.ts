@@ -7,7 +7,7 @@ import { ffmpegBin } from "./tools";
 /**
  * Copyright-safe free sources (no key, no account):
  * 1. Wikimedia Commons — freely licensed images/videos (CC/public-domain), attribution included.
- * 2. ZORO Safe Music Bed — FFmpeg diye locally generated ambient tone (100% tomar, zero strike risk).
+ * 2. ZEN R Safe Music Bed — FFmpeg diye locally generated ambient tone (100% tomar, zero strike risk).
  * 3. Reference packs — curated visual/style prompt starters (horror, cinematic, anime...).
  */
 
@@ -48,7 +48,7 @@ export async function searchWikimedia(query: string, limit = 8): Promise<StockIt
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const res = await fetch(api, { signal: ctrl.signal, headers: { "User-Agent": "zoro-ai/1.0 (copyright-safe stock)" } });
+    const res = await fetch(api, { signal: ctrl.signal, headers: { "User-Agent": "zen-r/1.0 (copyright-safe stock)" } });
     if (!res.ok) throw new Error(`Wikimedia busy (${res.status}) — retry koro.`);
     const data = (await res.json()) as CommonsResult;
     const pages = data?.query?.pages ? Object.values(data.query.pages) : [];
@@ -79,7 +79,7 @@ export async function downloadStockToMedia(projectId: string, fileUrl: string): 
   if (!isSafeStockUrl(fileUrl)) {
     throw new Error("Only upload.wikimedia.org / commons.wikimedia.org links allowed (copyright-safe allow-list).");
   }
-  const res = await fetch(fileUrl, { headers: { "User-Agent": "zoro-ai/1.0" } });
+  const res = await fetch(fileUrl, { headers: { "User-Agent": "zen-r/1.0" } });
   if (!res.ok) throw new Error(`Stock download failed (${res.status}).`);
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length < 2048) throw new Error("Stock file empty — retry.");

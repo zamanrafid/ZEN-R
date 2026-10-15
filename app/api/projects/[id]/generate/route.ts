@@ -66,7 +66,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       job.logs.push("Still queued on hosted diffusers (HF Inference — may bill to your HF account).");
     } else if (p.providerId === "zoro-engine") {
       job.providerId = "zoro-still";
-      job.logs.push("Still queued on Zoro Engine (100% offline, zero dependence).");
+      job.logs.push("Still queued on ZEN R Engine (100% offline, zero dependence).");
     } else {
       job.logs.push(`Free still queued for scene ${scene.index + 1} (Pollinations, no key). ${freeTierNote()}`);
     }
@@ -91,7 +91,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (provider.id === "slideshow") {
       job.logs.push("Free Movie Mode: AI still + cinematic motion, rendered on your PC. No cost, no key.");
     } else if (provider.id === "zoro-engine") {
-      job.logs.push("Zoro Engine: own procedural still + cinematic motion, 100% offline. No cost, no key, no internet.");
+      job.logs.push("ZEN R Engine: own procedural still + cinematic motion, 100% offline. No cost, no key, no internet.");
     } else if (provider.id === "a1111") {
       job.logs.push("A1111 Movie: still from YOUR WebUI (your GPU/model) + cinematic motion on your PC. No cost, no key.");
     } else if (provider.id === "localai") {
@@ -108,7 +108,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (provider.id === "hyperframes") {
     job.status = "failed";
     job.error =
-      "Hyperframes projects don't use per-scene clips — press 'Export Hyperframes (free cinematic)' in Assemble & export, then run: npx hyperframes render -o zoro-hyperframes.mp4";
+      "Hyperframes projects don't use per-scene clips — press 'Export Hyperframes (free cinematic)' in Assemble & export, then run: npx hyperframes render -o zen-r-hyperframes.mp4";
     job.logs.push(job.error);
     p.jobs.push(job);
     await saveProject(p);

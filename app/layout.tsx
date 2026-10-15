@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ZORO AI — One Prompt. Consistent Characters. Cinematic Videos.",
+  title: "ZEN R — One Prompt. Consistent Characters. Cinematic Videos.",
   description: "Type one prompt, approve consistent characters, generate connected scenes, export cinematic video."
 };
 

@@ -5,7 +5,7 @@ import type { AspectRatio, VisualStyle } from "./types";
 /**
  * ZORO ENGINE — tomar nijer alada model, karor upor depend na.
  * 100% offline, zero key, zero account, zero per-use fee:
- *   stills  = Zoro Engine procedural cinematic art (ei file, pure TypeScript)
+ *   stills  = ZEN R Engine procedural cinematic art (ei file, pure TypeScript)
  *   motion  = FFmpeg Ken Burns (tor PC)
  *   voice   = eSpeak NG offline (tor PC)
  *   render  = Hyperframes local (Chrome + FFmpeg, vendored GSAP — no CDN)
@@ -78,7 +78,7 @@ export function paletteForStyle(style?: VisualStyle): Palette {
   return PALETTES.dark;
 }
 
-/** Still dims for the Zoro Engine (light enough for i3, sharp enough for 720p). */
+/** Still dims for the ZEN R Engine (light enough for i3, sharp enough for 720p). */
 export function zoroDims(aspect: AspectRatio): { width: number; height: number } {
   if (aspect === "9:16") return { width: 768, height: 1344 };
   if (aspect === "1:1") return { width: 768, height: 768 };
@@ -255,10 +255,10 @@ function encodePng(w: number, h: number, rgb: Buffer): Buffer {
 /** Public entry: deterministic still bytes for a scene. */
 export function generateZoroStill(o: ZoroStillOpts): Buffer {
   const buf = renderZoroFrame(o);
-  if (buf.length < 1024) throw new Error("Zoro Engine produced an empty frame — retry.");
+  if (buf.length < 1024) throw new Error("ZEN R Engine produced an empty frame — retry.");
   return buf;
 }
 
 export function zoroEngineNote(): string {
-  return "Zoro Engine procedural art (100% offline, zero dependence) — deterministic, not AI diffusion.";
+  return "ZEN R Engine procedural art (100% offline, zero dependence) — deterministic, not AI diffusion.";
 }

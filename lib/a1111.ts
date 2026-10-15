@@ -2,7 +2,7 @@
  * AUTOMATIC1111 Stable Diffusion WebUI adapter (optional, your own GPU PC).
  * WebUI exposes an HTTP API when launched with --api:
  *   POST {A1111_URL}/sdapi/v1/txt2img → { images: [base64png, ...] }
- * Zoro AI only sends prompts there — identity/quality depend on YOUR model.
+ * ZEN R only sends prompts there — identity/quality depend on YOUR model.
  * Needs a NVIDIA GPU on the machine running WebUI (CPU works but is very slow).
  */
 

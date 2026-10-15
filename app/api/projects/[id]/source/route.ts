@@ -269,7 +269,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     disclaimer: exportDisclaimer(Boolean(p.sourceVideoPath)),
     safeSources: [
       "Wikimedia Commons (CC/public-domain, attribution soho) — GET /api/stock?q=...",
-      "ZORO Safe Music Bed (100% generated, zero claim) — POST action safe-music",
+      "ZEN R Safe Music Bed (100% generated, zero claim) — POST action safe-music",
       "Reference packs (horror/cinematic/anime/doc) — GET /api/stock/packs"
     ]
   });

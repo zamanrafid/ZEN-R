@@ -4,7 +4,7 @@
  *   GET  /models                 → status check
  *   POST /images/generations     → stills (b64_json or url)
  *   (chat planning already works via OPENAI_BASE_URL pointing at LocalAI)
- * Any GGUF/SD model YOU load there decides quality — Zoro only sends prompts.
+ * Any GGUF/SD model YOU load there decides quality — ZEN R only sends prompts.
  */
 
 export function localaiBase(): string {

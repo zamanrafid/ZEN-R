@@ -79,7 +79,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   );
   await fs.writeFile(
     path.join(exportAbs, "README.txt"),
-    `ZORO AI Ultimate Hyperframes export for "${p.name}" (theme: ${theme}).\n\nOne-click (in app): POST /api/projects/${p.id}/hyperframes/render\nManual on your PC:\n  cd "${exportAbs}"\n  npx --yes hyperframes@latest render -o zoro-hyperframes.mp4\n\nDeterministic: same HTML in, same MP4 out (Chrome + FFmpeg).\n`,
+    `ZEN R Ultimate Hyperframes export for "${p.name}" (theme: ${theme}).\n\nOne-click (in app): POST /api/projects/${p.id}/hyperframes/render\nManual on your PC:\n  cd "${exportAbs}"\n  npx --yes hyperframes@latest render -o zen-r-hyperframes.mp4\n\nDeterministic: same HTML in, same MP4 out (Chrome + FFmpeg).\n`,
     "utf-8"
   );
 
@@ -89,6 +89,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     durationSec: hyperframesDuration(p, p.sceneOrder),
     theme,
     renderUrl: `/api/projects/${p.id}/hyperframes/render`,
-    note: "FREE Ultimate Hyperframes composition exported (permanent integration). One-click render in app, or locally: npx hyperframes render -o zoro-hyperframes.mp4"
+    note: "FREE Ultimate Hyperframes composition exported (permanent integration). One-click render in app, or locally: npx hyperframes render -o zen-r-hyperframes.mp4"
   });
 }

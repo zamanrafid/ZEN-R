@@ -18,6 +18,6 @@ export async function GET() {
     llmPlanner: llmPlanner
       ? { active: true, note: "LLM storyboard planner is configured." }
       : { active: false, note: "Using the built-in offline storyboard planner (free, no key needed)." },
-    honesty: "ZORO AI never simulates progress. Jobs report real statuses; failures are shown as failures."
+    honesty: "ZEN R never simulates progress. Jobs report real statuses; failures are shown as failures."
   });
 }

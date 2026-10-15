@@ -1,4 +1,4 @@
-# ZORO AI — One Prompt. Consistent Characters. Cinematic Videos.
+# ZEN R — One Prompt. Consistent Characters. Cinematic Videos.
 
 A real, working prompt-to-video studio (Next.js + TypeScript + Tailwind). Type one prompt →
 storyboard → approve character references → generate scenes → assemble → export MP4.
@@ -10,17 +10,17 @@ storyboard → approve character references → generate scenes → assemble →
 
 One honest note first: **true AI video diffusion has no free unlimited option
 anywhere** — every provider that does real text-to-video charges or gates usage.
-So ZORO AI's free path is: **AI stills + cinematic motion + voiceover**, all free:
+So ZEN R's free path is: **AI stills + cinematic motion + voiceover**, all free:
 
 1. **Storyboard** — offline planner (always works) → tries a free hosted LLM, falls back silently.
 2. **Scene stills** — FREE AI images via Pollinations, no key, character identity stamped into every prompt.
 3. **Motion** — FFmpeg Ken Burns zoom/drift rendered on your PC (labeled as animated stills, never as AI diffusion).
 4. **Voiceover** — tries free hosted TTS; if refused, auto-falls back to **eSpeak NG** (free, offline, robotic).
-5. **Export** — 720×1280 / 1280×720 / 720×720 MP4 + SRT, zero watermark from ZORO AI.
+5. **Export** — 720×1280 / 1280×720 / 720×720 MP4 + SRT, zero watermark from ZEN R.
 6. **Hyperframes Cinematic (NEW, free)** — storyboard → deterministic HTML/GSAP
    composition (`POST /api/projects/[id]/hyperframes`) with kinetic captions +
    embedded stills/narration → render on your PC with
-   `npx hyperframes render -o zoro-hyperframes.mp4` (Chrome + FFmpeg).
+   `npx hyperframes render -o zen-r-hyperframes.mp4` (Chrome + FFmpeg).
    Best for horror/mystery typography, title cards, and captioned narration.
 
 Verified end-to-end on 2026-10-09: 20.0s 720×1280 h264+aac MP4 with voiceover,
@@ -52,15 +52,15 @@ for higher limits + watermark removal. Free-tier images may carry a watermark.
 - Narration: editable script, free on-device voice preview (Web Speech),
   audio upload, SRT sidecar + download, optional caption burn-in.
 - FFmpeg assembly to the chosen aspect ratio + watermark-free MP4 export
-  (ZORO AI adds no overlay; provider-added watermarks are never stripped).
+  (ZEN R adds no overlay; provider-added watermarks are never stripped).
 - File-based project storage (`./data`), media served via `/api/media/*`.
 - Tests: `npm test` (planner, SRT, honesty/schema guards).
 
 ## Open-source engine integrations (all optional)
 
-| Engine | What Zoro uses it for | Needs |
+| Engine | What ZEN R uses it for | Needs |
 |---|---|---|
-| Zoro Engine (built-in) | 100% own procedural stills + local motion/voice/render — zero key, zero internet | Nothing | Stills from YOUR SD model (`A1111_URL`, WebUI `--api`), motion local | NVIDIA GPU PC |
+| ZEN R Engine (built-in) | 100% own procedural stills + local motion/voice/render — zero key, zero internet | Nothing | Stills from YOUR SD model (`A1111_URL`, WebUI `--api`), motion local | NVIDIA GPU PC |
 | LocalAI | Local stills + local planning via `OPENAI_BASE_URL` | Your hardware |
 | HF diffusers (hosted) | SDXL/SD/FLUX stills, no local GPU (`HF_TOKEN`) | HF account/billing |
 | OpenMontage pattern | Remix pipeline: Shorts -> storyboard (`fromSource:true`) | Nothing (built-in) |
@@ -70,7 +70,7 @@ for higher limits + watermark removal. Free-tier images may carry a watermark.
 | Unsloth | Dataset export (`GET .../dataset` JSONL) — training needs NVIDIA GPU | GPU elsewhere |
 
 AGPL-licensed code (e.g. OpenMontage) is never vendored — only API/pattern-level
-integration, so Zoro stays cleanly licensed.
+integration, so ZEN R stays cleanly licensed.
 
 ## What is NOT free / needs setup
 
@@ -162,7 +162,7 @@ tests/                          vitest suite
 GitHub Desktop is already installed on this PC (it also gives you Git).
 
 1. Create an **empty** repository on https://github.com/new (no README, no .gitignore).
-2. In GitHub Desktop: **File → Add local repository →** choose `C:\Users\rafid\zoro-ai`.
+2. In GitHub Desktop: **File → Add local repository →** choose `C:\Users\rafid\zen-r`.
 3. **Publish repository** → sign in with your GitHub account → Publish. Done —
    code, tests and docs go up; your videos/secrets never do (`.gitignore`
    excludes `data/`, `.env.local`, `node_modules`, `.next`).
@@ -170,26 +170,26 @@ GitHub Desktop is already installed on this PC (it also gives you Git).
 Command-line alternative (repo-local git, no global config touched):
 
 ```powershell
-cd C:\Users\rafid\zoro-ai
-git remote add origin https://github.com/YOURNAME/zoro-ai.git
+cd C:\Users\rafid\zen-r
+git remote add origin https://github.com/YOURNAME/zen-r.git
 git push -u origin main
 ```
 
 ## Deploy — read this first
 
-ZORO AI renders video with **long FFmpeg jobs + local files**. That decides hosting:
+ZEN R renders video with **long FFmpeg jobs + local files**. That decides hosting:
 
 | Host | Works? | Notes |
 |---|---|---|
-| **VPS with Docker (recommended)** — Hetzner, Contabo, DigitalOcean, Render (Docker), Railway, Fly.io | ✅ Full features | Build with the included `Dockerfile` (FFmpeg + voice included). Mount a volume at `/app/data` so projects survive restarts. Set `ZORO_DATA_DIR=/app/data`. |
+| **VPS with Docker (recommended)** — Hetzner, Contabo, DigitalOcean, Render (Docker), Railway, Fly.io | ✅ Full features | Build with the included `Dockerfile` (FFmpeg + voice included). Mount a volume at `/app/data` so projects survive restarts. Set `ZENR_DATA_DIR=/app/data`. |
 | **Render / Railway (Node service)** | ✅ with setup | Use `npm run build` + `npm start`; add an FFmpeg buildpack or Dockerfile; attach a disk for `data/`. |
 | **Vercel / Netlify (serverless)** | ⚠️ Demo only | No FFmpeg binary, ~60s function timeouts (kills renders), filesystem is ephemeral (the app auto-falls back to `/tmp`, but projects vanish on redeploy). Storyboard/characters UI works; exports don't. Not recommended for real use. |
 
 Docker deploy (any VPS with Docker):
 
 ```bash
-docker build -t zoro-ai .
-docker run -d -p 3000:3000 -v zoro-data:/app/data --env-file .env.local --name zoro-ai zoro-ai
+docker build -t zen-r .
+docker run -d -p 3000:3000 -v zen-r-data:/app/data --env-file .env.local --name zen-r zen-r
 ```
 
 Then open `http://YOUR-SERVER-IP:3000`. For paid Replicate video on a server,

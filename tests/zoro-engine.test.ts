@@ -17,7 +17,7 @@ function pngSize(buf: Buffer): { w: number; h: number } {
   return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
 }
 
-describe("Zoro Engine (own offline model)", () => {
+describe("ZEN R Engine (own offline model)", () => {
   it("renders valid PNGs at the right dims per aspect", () => {
     expect(zoroDims("9:16")).toEqual({ width: 768, height: 1344 });
     expect(zoroDims("16:9")).toEqual({ width: 1024, height: 576 });

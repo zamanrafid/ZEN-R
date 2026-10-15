@@ -114,10 +114,10 @@ export function ffmpegInstalled(): boolean {
 /** Context-aware message: installed-but-invisible vs truly absent vs demo host. */
 export function renderUnavailableMessage(): string {
   if (process.env.VERCEL === "1") {
-    return "Video rendering is impossible on this hosted demo link (servers here cannot run FFmpeg). Run start-zoro.bat on your PC — everything renders there.";
+    return "Video rendering is impossible on this hosted demo link (servers here cannot run FFmpeg). Run start-zen-r.bat on your PC — everything renders there.";
   }
   if (ffmpegInstalled()) {
-    return "FFmpeg IS installed on this PC, but this terminal cannot see it. Close ALL terminal windows (or restart the PC), then double-click start-zoro.bat.";
+    return "FFmpeg IS installed on this PC, but this terminal cannot see it. Close ALL terminal windows (or restart the PC), then double-click start-zen-r.bat.";
   }
   return "FFmpeg was not found, so the free clip could not be rendered. Install it with: winget install Gyan.FFmpeg (then restart the terminal).";
 }

@@ -47,6 +47,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     ok: true,
     mp4: r.mp4Rel,
     download: `/api/media/${r.mp4Rel}`,
-    note: "Ultimate Hyperframes MP4 rendered locally — FREE, watermark-free from ZORO AI."
+    note: "Ultimate Hyperframes MP4 rendered locally — FREE, watermark-free from ZEN R."
   });
 }

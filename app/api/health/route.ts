@@ -35,12 +35,12 @@ export async function GET(): Promise<NextResponse> {
             label: "File storage",
             ok: false,
             detail: "Serverless demo storage: files vanish between requests. Projects will 404.",
-            fix: "This hosted link is demo-only. Run start-zoro.bat on your PC for real projects."
+            fix: "This hosted link is demo-only. Run start-zen-r.bat on your PC for real projects."
           }
         : { id: "storage", label: "File storage", ok: true, detail: `Writable: ${dataDir()}` }
     );
   } catch {
-    items.push({ id: "storage", label: "File storage", ok: false, detail: "Storage is not writable.", fix: "Run locally (start-zoro.bat)." });
+    items.push({ id: "storage", label: "File storage", ok: false, detail: "Storage is not writable.", fix: "Run locally (start-zen-r.bat)." });
   }
 
   const [ff, es, yt] = await Promise.all([checkFfmpeg(), checkEspeak(), checkYtdlp()]);

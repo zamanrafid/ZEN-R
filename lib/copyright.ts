@@ -1,5 +1,5 @@
 /**
- * Copyright-strike protection for ZORO AI.
+ * Copyright-strike protection for ZEN R.
  * Rule: YouTube / uploads / stock ke sirf tokhon use koro jokhon rights tomar —
  * nijer video, licensed, public domain, or freely-licensed (CC) with attribution.
  * AI kokhono copyright detect korte pare na — tai explicit confirmation + license
@@ -52,11 +52,11 @@ export function copyrightRiskOfTitle(title: string): { risky: boolean; reason?: 
 /** YouTube audio reuse = sobcheye boro strike reason (music). Safe fix: mute + free voice/music. */
 export function audioRiskNote(hasSourceAudio: boolean): string {
   if (!hasSourceAudio) return "";
-  return "Source audio te onner music/song thakle YouTube/FB te Content ID claim asbe. Safe upay: Shorts katar somoy muteSource:true dao, tarpor ZORO free voiceover + safe music bed bosao (100% copyright-free).";
+  return "Source audio te onner music/song thakle YouTube/FB te Content ID claim asbe. Safe upay: Shorts katar somoy muteSource:true dao, tarpor ZEN R free voiceover + safe music bed bosao (100% copyright-free).";
 }
 
 export function rightsConfirmError(): string {
-  return "Copyright protection: confirm koro video ta tomar nijer / license / public-domain / CC. Body te confirmRights:true + license পাঠাও (e.g. own-work). Onner video bina permission e use korle strike khabe — ZORO AI seta block kore.";
+  return "Copyright protection: confirm koro video ta tomar nijer / license / public-domain / CC. Body te confirmRights:true + license পাঠাও (e.g. own-work). Onner video bina permission e use korle strike khabe — ZEN R seta block kore.";
 }
 
 /** Attribution text — CC-BY / CC-BY-SA te description e ditei hobe. */
@@ -78,7 +78,7 @@ export function buildAttribution(opts: {
 /** Export-time disclaimer (MP4/SRT sathe README te jabe). */
 export function exportDisclaimer(hasThirdPartySource: boolean): string {
   const base =
-    "ZORO AI nijer theke kono copyrighted content ane na. Tumi ja import/generate korecho tar rights tomar dayitto.";
+    "ZEN R nijer theke kono copyrighted content ane na. Tumi ja import/generate korecho tar rights tomar dayitto.";
   if (!hasThirdPartySource) return `${base} AI stills + voice + motion sob free/generated — strike risk minimal.`;
   return `${base} Third-party source ache — YouTube/FB te upload er age rights + attribution double-check koro. Music thakle mute + free voiceover use koro.`;
 }

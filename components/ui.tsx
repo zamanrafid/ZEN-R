@@ -3,7 +3,7 @@ export function ZoroLogo({ size = 40 }: { size?: number }) {
     <span className="inline-flex items-center gap-3">
       <span className="relative inline-flex" style={{ width: size, height: size }}>
         <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500/40 to-fuchsia-500/40 blur-md" />
-        <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="ZORO AI logo" className="relative">
+        <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="ZEN R logo" className="relative">
           <defs>
             <linearGradient id="zg" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#60A5FA" />
@@ -19,7 +19,7 @@ export function ZoroLogo({ size = 40 }: { size?: number }) {
       </span>
       <span className="leading-tight">
         <span className="block text-lg font-extrabold tracking-wide">
-          ZORO <span className="grad-text">AI</span>
+          ZEN <span className="grad-text">R</span>
         </span>
         <span className="block text-[11px] text-muted">One Prompt. Consistent Characters. Cinematic Videos.</span>
       </span>

@@ -1,8 +1,8 @@
 {
-  "name": "zoro-ai",
+  "name": "zen-r",
   "version": "0.1.0",
   "private": true,
-  "description": "ZORO AI — One Prompt. Consistent Characters. Cinematic Videos.",
+  "description": "ZEN R — One Prompt. Consistent Characters. Cinematic Videos.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

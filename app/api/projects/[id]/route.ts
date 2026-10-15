@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       {
         error:
           "Project not found. It may have been deleted — or on a hosted demo link, storage resets between visits, " +
-          "so run on your own PC (npm run dev / start-zoro.bat) for permanent projects."
+          "so run on your own PC (npm run dev / start-zen-r.bat) for permanent projects."
       },
       { status: 404 }
     );

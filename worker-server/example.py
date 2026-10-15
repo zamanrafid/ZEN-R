@@ -1,8 +1,8 @@
 """
-ZORO AI reference worker — YOUR model, YOUR hardware, zero third parties.
+ZEN R reference worker — YOUR model, YOUR hardware, zero third parties.
 
 Runs ANY Hugging Face image model you choose (default: a tiny CPU-friendly one)
-behind the exact contract ZORO AI expects:
+behind the exact contract ZEN R expects:
 
   POST /v1/generate  { kind, prompt, negativePrompt?, width, height,
                        durationSec?, seed?, referenceImageDataUrl? } -> { jobId }
@@ -24,7 +24,7 @@ Setup (Windows):
   set SD_MODEL=segmind/tiny-sd
   uvicorn example:app --host 127.0.0.1 --port 8188
 
-Then in ZORO AI .env.local:  WORKER_URL=http://127.0.0.1:8188
+Then in ZEN R .env.local:  WORKER_URL=http://127.0.0.1:8188
 and pick provider "Your own model server". No account, no key, no middleman.
 """
 
@@ -44,7 +44,7 @@ from PIL import Image
 OUT = Path(__file__).parent / "outputs"
 OUT.mkdir(exist_ok=True)
 
-app = FastAPI(title="ZORO AI own-model worker")
+app = FastAPI(title="ZEN R own-model worker")
 
 JOBS: dict = {}
 PIPE = None

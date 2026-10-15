@@ -218,7 +218,7 @@ export default function Studio({ params }: { params: { id: string } }) {
       );
       if (!ok || !data.project) throw new Error(apiError(status, data, "Assembly failed."));
       setProject(data.project as Project);
-      setNotice("Export ready — watermark-free MP4 (ZORO AI adds no branding overlay).");
+      setNotice("Export ready — watermark-free MP4 (ZEN R adds no branding overlay).");
     } catch (e) { setError(e instanceof Error ? e.message : "Assembly failed."); }
     finally { setBusy(""); }
   }
@@ -232,7 +232,7 @@ export default function Studio({ params }: { params: { id: string } }) {
         120000
       );
       if (!ok) throw new Error(apiError(status, data, "Hyperframes export failed."));
-      setNotice(`Hyperframes composition exported (${(data as { durationSec?: number }).durationSec ?? "?"}s): ${(data as { exportPath?: string }).exportPath ?? ""}. Render on your PC: npx hyperframes render -o zoro-hyperframes.mp4`);
+      setNotice(`Hyperframes composition exported (${(data as { durationSec?: number }).durationSec ?? "?"}s): ${(data as { exportPath?: string }).exportPath ?? ""}. Render on your PC: npx hyperframes render -o zen-r-hyperframes.mp4`);
     } catch (e) { setError(e instanceof Error ? e.message : "Hyperframes export failed."); }
     finally { setBusy(""); }
   }
@@ -509,7 +509,7 @@ export default function Studio({ params }: { params: { id: string } }) {
         <div className="card mt-5 border-emerald-500/30">
           <p className="text-sm text-emerald-200">
             Running on <b>your own model server</b> — no third-party service, no key, no account, no per-use fee in this project.
-            “API” here only means ZORO AI talking directly to your server.
+            “API” here only means ZEN R talking directly to your server.
           </p>
         </div>
       )}
@@ -677,8 +677,8 @@ export default function Studio({ params }: { params: { id: string } }) {
             const latest = jobs[jobs.length - 1];
             const stillJob = [...jobs].reverse().find((j) => j.providerId === "free-still");
             const chars = s.characterIds.map((cid) => project.characters.find((c) => c.id === cid)).filter(Boolean);
-            const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : project.providerId === "hyperframes" ? "Export Hyperframes scene" : project.providerId === "a1111" ? "Generate clip (A1111 stills + motion)" : project.providerId === "localai" ? "Generate clip (LocalAI stills + motion)" : project.providerId === "huggingface" ? "Generate clip (diffusers stills + motion)" : project.providerId === "zoro-engine" ? "Generate clip (Zoro Engine, offline)" : "Generate clip (paid)";
-            const tag = latest?.providerId === "free-still" ? " (free still)" : latest?.providerId === "slideshow" ? " (free)" : latest?.providerId === "zoro-still" ? " (zoro engine)" : latest?.providerId === "worker" || latest?.providerId === "worker-still" ? " (your model)" : "";
+            const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : project.providerId === "hyperframes" ? "Export Hyperframes scene" : project.providerId === "a1111" ? "Generate clip (A1111 stills + motion)" : project.providerId === "localai" ? "Generate clip (LocalAI stills + motion)" : project.providerId === "huggingface" ? "Generate clip (diffusers stills + motion)" : project.providerId === "zoro-engine" ? "Generate clip (ZEN R Engine, offline)" : "Generate clip (paid)";
+            const tag = latest?.providerId === "free-still" ? " (free still)" : latest?.providerId === "slideshow" ? " (free)" : latest?.providerId === "zoro-still" ? " (zen r engine)" : latest?.providerId === "worker" || latest?.providerId === "worker-still" ? " (your model)" : "";
             return (
               <li key={s.id} className="rounded-xl border border-slate-700/80 bg-slate-900/30 p-4 transition-colors hover:border-violet-500/40">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -842,7 +842,7 @@ export default function Studio({ params }: { params: { id: string } }) {
       </section>
 
       <section className="card anim-fade-up mt-5">
-        <SectionHead num="5" title="Assemble and export" hint="MP4 + SRT, watermark-free from ZORO AI." />
+        <SectionHead num="5" title="Assemble and export" hint="MP4 + SRT, watermark-free from ZEN R." />
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={project.burnCaptions} onChange={async (e) => {
@@ -879,7 +879,7 @@ export default function Studio({ params }: { params: { id: string } }) {
         {project.output?.path && (
           <video controls src={`/api/media/${project.output.path}`} className="mt-4 w-full max-w-2xl rounded-xl" />
         )}
-        <p className="mt-2 text-xs text-muted">No ZORO AI watermark is ever added. Free Movie Mode exports from your AI stills even if some clips never rendered.</p>
+        <p className="mt-2 text-xs text-muted">No ZEN R watermark is ever added. Free Movie Mode exports from your AI stills even if some clips never rendered.</p>
       </section>
     </main>
   );

@@ -1,8 +1,8 @@
 /**
- * "Your own model" worker contract (ZORO AI side).
+ * "Your own model" worker contract (ZEN R side).
  *
  * Run ANY image/video model on YOUR hardware, expose these two endpoints,
- * set WORKER_URL — ZORO AI drives it with zero third-party dependence:
+ * set WORKER_URL — ZEN R drives it with zero third-party dependence:
  *
  *   POST {WORKER_URL}/v1/generate
  *     { kind: "still"|"clip", prompt, negativePrompt?, width, height,

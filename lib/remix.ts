@@ -4,7 +4,7 @@ import type { ScenePlan } from "./types";
 /**
  * OpenMontage-style remix pipeline: "paste a video you love" → storyboard.
  * Builds scenes from YOUR already-cut Shorts (timings preserved), so a source
- * video becomes an editable Zoro storyboard: recaption, revoice, re-export.
+ * video becomes an editable ZEN R storyboard: recaption, revoice, re-export.
  * Only works on videos you have rights to (import gate already enforces this).
  */
 
