@@ -7,6 +7,14 @@ import { v4 as uuidv4 } from "uuid";
 import { dataDir, getProject, saveProject, saveUpload, newId } from "@/lib/store";
 import { checkFfmpeg } from "@/lib/providers";
 import {
+  buildAttribution,
+  copyrightRiskOfTitle,
+  exportDisclaimer,
+  isValidLicense,
+  rightsConfirmError,
+} from "@/lib/copyright";
+import { downloadStockToMedia, generateSafeMusicBed, isSafeStockUrl } from "@/lib/stock";
+import {
   MAX_SOURCE_BYTES,
   cutSegment,
   downloadYouTube,
@@ -25,11 +33,15 @@ function fmtTime(s: number): string {
 }
 
 /**
- * Source-video hub (all FREE, local tools):
- * - POST { youtubeUrl } → import a public YouTube video (rights: only yours / licensed).
- * - POST { upload: { filename, dataUrl } } → upload mp4/webm/mov (≤300MB via form).
- * - POST { action: "shorts", segSec?, startSec? } → cut vertical Shorts + attach as scenes.
- * - GET → source info + shorts list.
+ * Source-video hub (all FREE, local tools) — copyright-strike protected:
+ * - POST { youtubeUrl, confirmRights:true, license } → import public YouTube video.
+ *   Rights: ONLY nijer / licensed / public-domain / CC. confirmRights + license mandatory.
+ * - POST { upload: { filename, dataUrl }, license? } → upload mp4/webm/mov (≤300MB).
+ * - POST { action: "shorts", segSec?, startSec?, muteSource? } → vertical Shorts + scenes.
+ *   muteSource:true = source audio strip (music-claim risk thakle etai safe).
+ * - POST { stockUrl, attribution? } → Wikimedia Commons file import (allow-listed, CC-safe).
+ * - POST { action: "safe-music", mood?, durSec? } → 100% copyright-free generated bed.
+ * - GET → source info + shorts list + rights + safe-source catalog.
  */
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const p = await getProject(params.id);
@@ -37,26 +49,84 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Body must be JSON." }, { status: 400 }); }
 
-  // ---- YouTube import ----
+  // ---- YouTube import (rights-gated) ----
   if (typeof body.youtubeUrl === "string") {
     const url = body.youtubeUrl.trim();
     if (!isYouTubeUrl(url)) {
       return NextResponse.json({ error: "Only youtube.com/watch, /shorts, /live or youtu.be links are accepted." }, { status: 400 });
     }
+    if (body.confirmRights !== true || !isValidLicense(body.license)) {
+      return NextResponse.json({ error: rightsConfirmError() }, { status: 403 });
+    }
     try {
       const rel = `media/source/${p.id}/source.mp4`.replace(/\\/g, "/");
       await downloadYouTube(url, path.join(dataDir(), rel));
       const probe = await probeVideo(path.join(dataDir(), rel));
+      const risk = copyrightRiskOfTitle(url);
       p.sourceVideoPath = rel;
       p.sourceDurationSec = Math.round(probe.durationSec * 10) / 10;
       p.sourceTitle = url;
+      p.sourceUrl = url;
+      p.sourceLicense = String(body.license);
+      p.rightsConfirmedAt = new Date().toISOString();
+      p.sourceAttribution = buildAttribution({ title: url, sourceUrl: url, license: body.license as never });
       await saveProject(p);
       return NextResponse.json({
         project: p,
-        note: `Imported ${fmtTime(probe.durationSec)} of video (${probe.width}x${probe.height}). Only use videos you own or have rights to.`
+        risk: risk.risky ? risk.reason : undefined,
+        audioWarning:
+          "Source audio te onner music thakle Content ID claim asbe — Shorts katar somoy muteSource:true + free voiceover/safe-music use koro.",
+        note: `Imported ${fmtTime(probe.durationSec)} (${probe.width}x${probe.height}) [${body.license}]. Strike-free thakte nijer/license/CC content-i use koro.`
       });
     } catch (e) {
       return NextResponse.json({ error: e instanceof Error ? e.message : "Import failed." }, { status: 422 });
+    }
+  }
+
+  // ---- Copyright-safe stock import (Wikimedia allow-list) ----
+  if (typeof body.stockUrl === "string") {
+    if (!isSafeStockUrl(body.stockUrl)) {
+      return NextResponse.json(
+        { error: "Only upload.wikimedia.org / commons.wikimedia.org links allowed (copyright-safe allow-list)." },
+        { status: 400 }
+      );
+    }
+    try {
+      const rel = await downloadStockToMedia(p.id, body.stockUrl.trim());
+      return NextResponse.json({
+        ok: true,
+        stockPath: rel,
+        attribution:
+          typeof body.attribution === "string" && body.attribution.length > 0
+            ? body.attribution
+            : buildAttribution({ title: "Wikimedia Commons file", sourceUrl: body.stockUrl }),
+        note: "CC/public-domain stock saved. Description e attribution rakho — tahole strike risk nei."
+      });
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Stock import failed." }, { status: 422 });
+    }
+  }
+
+  // ---- 100% copyright-free safe music bed ----
+  if (body.action === "safe-music") {
+    const ff = await checkFfmpeg();
+    if (!ff.ok) {
+      return NextResponse.json({ error: "FFmpeg is required. Install with: winget install Gyan.FFmpeg" }, { status: 422 });
+    }
+    const mood = body.mood === "tension" ? "tension" : body.mood === "hopeful" ? "hopeful" : "ambient";
+    const durSec = Math.max(3, Math.min(120, Math.round(Number(body.durSec) || 30)));
+    try {
+      const rel = `media/source/${p.id}/safe-music-${mood}.m4a`.replace(/\\/g, "/");
+      await generateSafeMusicBed(rel, durSec, mood);
+      p.safeMusicPath = rel;
+      await saveProject(p);
+      return NextResponse.json({
+        project: p,
+        musicPath: rel,
+        note: `Safe ${mood} bed (${durSec}s) tomar PC te generate holo — kono sample nei, Content ID claim impossible.`
+      });
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : "Safe music failed." }, { status: 422 });
     }
   }
 
@@ -97,6 +167,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const total = Math.max(0, (p.sourceDurationSec ?? 0) - startSec);
     if (total < 3) return NextResponse.json({ error: "Start time is past the end of the video." }, { status: 400 });
     const maxParts = Math.max(1, Math.min(40, Math.round(Number(body.maxParts) || 12)));
+    const muteSource = body.muteSource === true;
     const plan = planShorts(total, segSec).slice(0, maxParts);
     try {
       const srcAbs = path.join(dataDir(), p.sourceVideoPath);
@@ -108,7 +179,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         const cutRel = `media/source/${p.id}/cut_${i}.mp4`.replace(/\\/g, "/");
         await cutSegment(srcAbs, absStart, seg.len, cutRel);
         const vRel = `media/shorts/${p.id}/short_${i}_${Date.now()}.mp4`.replace(/\\/g, "/");
-        await toVertical720x1280(path.join(dataDir(), cutRel), vRel, p.settings.quality === "best");
+        await toVertical720x1280(path.join(dataDir(), cutRel), vRel, p.settings.quality === "best", muteSource);
         await fs.unlink(path.join(dataDir(), cutRel)).catch(() => undefined);
         shorts.push({ path: vRel, startSec: absStart, lenSec: seg.len });
       }
@@ -130,7 +201,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           characterIds: [],
           narrationSegment: "",
           caption: `Short ${base + i + 1} (${fmtTime(sh.startSec)}–${fmtTime(sh.startSec + sh.lenSec)})`,
-          sound: "Source audio"
+          sound: muteSource ? "Muted (copyright-safe) — add free voiceover/safe-music" : "Source audio"
         };
         p.scenes.push(scene);
         p.sceneOrder.push(scene.id);
@@ -152,7 +223,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       await saveProject(p);
       return NextResponse.json({
         project: p,
-        note: `${shorts.length} Shorts cut (vertical 9:16) and attached as scenes — preview, voiceover and export work on them directly.`
+        muted: muteSource,
+        note: muteSource
+          ? `${shorts.length} Shorts cut MUTED (copyright-safe) — ekhon free voiceover + safe-music bosao, strike risk nei.`
+          : `${shorts.length} Shorts cut (vertical 9:16) and attached as scenes. Music thakle Content ID risk — muteSource:true use koro.`
       });
     } catch (e) {
       await saveProject(p);
@@ -160,7 +234,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
   }
 
-  return NextResponse.json({ error: "Give youtubeUrl, upload {filename,dataUrl}, or action 'shorts'." }, { status: 400 });
+  return NextResponse.json({ error: "Give youtubeUrl (+confirmRights+license), upload, stockUrl, or action 'shorts'/'safe-music'." }, { status: 400 });
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -172,9 +246,18 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   ]);
   return NextResponse.json({
     source: p.sourceVideoPath
-      ? { path: p.sourceVideoPath, durationSec: p.sourceDurationSec ?? 0, title: p.sourceTitle ?? "" }
+      ? {
+        path: p.sourceVideoPath,
+        durationSec: p.sourceDurationSec ?? 0,
+        title: p.sourceTitle ?? "",
+        url: p.sourceUrl,
+        license: p.sourceLicense,
+        rightsConfirmedAt: p.rightsConfirmedAt,
+        attribution: p.sourceAttribution
+      }
       : null,
     shorts: p.shorts ?? [],
+    safeMusic: p.safeMusicPath ?? null,
     tools: {
       ytdlp: yt.ok
         ? { ok: true }
@@ -182,6 +265,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       ffmpeg: ff.ok ? { ok: true } : { ok: false, help: "Install free with: winget install Gyan.FFmpeg" }
     },
     limits: { maxBytes: MAX_SOURCE_BYTES, maxSec: 1200, segMin: 5, segMax: 60 },
-    rights: "Only import videos you own or have rights to use."
+    rights: "Only nijer / licensed / public-domain / CC video use koro. YouTube import e confirmRights:true + license mandatory. Music thakle muteSource:true + safe-music.",
+    disclaimer: exportDisclaimer(Boolean(p.sourceVideoPath)),
+    safeSources: [
+      "Wikimedia Commons (CC/public-domain, attribution soho) — GET /api/stock?q=...",
+      "ZORO Safe Music Bed (100% generated, zero claim) — POST action safe-music",
+      "Reference packs (horror/cinematic/anime/doc) — GET /api/stock/packs"
+    ]
   });
 }

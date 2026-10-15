@@ -112,8 +112,8 @@ export async function downloadYouTube(url: string, outAbsPath: string, timeoutMs
   }
 }
 
-/** Convert any clip to vertical 9:16 Shorts format (center crop). Quality picks 720p/1080p. */
-export async function toVertical720x1280(srcAbs: string, outRel: string, best = false): Promise<string> {
+/** Convert any clip to vertical 9:16 Shorts format (center crop). Quality picks 720p/1080p. mute=true strips audio (music-claim safe). */
+export async function toVertical720x1280(srcAbs: string, outRel: string, best = false, mute = false): Promise<string> {
   const W = best ? 1080 : 720;
   const H = best ? 1920 : 1280;
   const outAbs = path.join(dataDir(), outRel);
@@ -121,8 +121,11 @@ export async function toVertical720x1280(srcAbs: string, outRel: string, best = 
   await new Promise<void>((resolve, reject) => {
     const child = spawn(
       ffmpegBin(),
-      ["-y", "-i", srcAbs, "-vf", `scale=${W}:${H}:flags=lanczos:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=30,format=yuv420p` + (best ? ",unsharp=5:5:0.5:5:5:0.0" : ""),
-        "-c:v", "libx264", "-preset", best ? "medium" : "veryfast", "-crf", best ? "18" : "21", "-c:a", "aac", outAbs],
+      mute
+        ? ["-y", "-i", srcAbs, "-vf", `scale=${W}:${H}:flags=lanczos:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=30,format=yuv420p` + (best ? ",unsharp=5:5:0.5:5:5:0.0" : ""),
+          "-c:v", "libx264", "-preset", best ? "medium" : "veryfast", "-crf", best ? "18" : "21", "-an", outAbs]
+        : ["-y", "-i", srcAbs, "-vf", `scale=${W}:${H}:flags=lanczos:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=30,format=yuv420p` + (best ? ",unsharp=5:5:0.5:5:5:0.0" : ""),
+          "-c:v", "libx264", "-preset", best ? "medium" : "veryfast", "-crf", best ? "18" : "21", "-c:a", "aac", outAbs],
       { stdio: ["ignore", "pipe", "pipe"] }
     );
     child.on("error", (e) => reject(new Error(`Could not launch FFmpeg: ${e.message}`)));
