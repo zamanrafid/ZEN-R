@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { dataDir, getProject, saveProject, saveUpload, newId } from "@/lib/store";
+import { dataDir, getProject, saveProject, saveUpload, newId, withProjectLock } from "@/lib/store";
 import { checkFfmpeg } from "@/lib/providers";
 import {
   buildAttribution,
@@ -220,9 +220,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         p.jobs.push(job);
         await indexJob(p.id, job.id);
       }
-      await saveProject(p);
+      // Locked merge-append: background polls may have updated jobs meanwhile.
+      const merged = await withProjectLock(p.id, async () => {
+        const fresh = await getProject(p.id);
+        if (!fresh) throw new Error("Project vanished mid-cut.");
+        for (const s of p.scenes) {
+          if (!fresh.scenes.some((x) => x.id === s.id)) {
+            fresh.scenes.push(s);
+            fresh.sceneOrder.push(s.id);
+          }
+        }
+        for (const j of p.jobs) {
+          if (!fresh.jobs.some((x) => x.id === j.id)) fresh.jobs.push(j);
+        }
+        fresh.shorts = p.shorts;
+        await saveProject(fresh);
+        return fresh;
+      });
       return NextResponse.json({
-        project: p,
+        project: merged,
         muted: muteSource,
         note: muteSource
           ? `${shorts.length} Shorts cut MUTED (copyright-safe) — ekhon free voiceover + safe-music bosao, strike risk nei.`

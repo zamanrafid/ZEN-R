@@ -26,16 +26,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       narrationVolume: p.narrationVolume,
       musicVolume: p.musicVolume
     });
-    p.output = { path: outputPath, srtPath, status: "succeeded", updatedAt: new Date().toISOString() };
-    await saveProject(p);
+    // Re-read fresh: background polls progressed during the long encode.
+    const freshAsm = await getProject(params.id);
+    const target = freshAsm ?? p;
+    target.output = { path: outputPath, srtPath, status: "succeeded", updatedAt: new Date().toISOString() };
+    await saveProject(target);
     return NextResponse.json({
-      project: p,
+      project: target,
       note: "Export has no ZEN R watermark. Third-party provider watermarks (if any) are never stripped — see provider terms."
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Assembly failed.";
-    p.output = { status: "failed", error: msg, updatedAt: new Date().toISOString() };
-    await saveProject(p);
-    return NextResponse.json({ error: msg, project: p }, { status: 422 });
+    const freshFail = await getProject(params.id);
+    const failTarget = freshFail ?? p;
+    failTarget.output = { status: "failed", error: msg, updatedAt: new Date().toISOString() };
+    await saveProject(failTarget);
+    return NextResponse.json({ error: msg, project: failTarget }, { status: 422 });
   }
 }

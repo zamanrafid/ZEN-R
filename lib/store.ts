@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
 import os from "os";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import type { Project } from "./types";
+import type { GenerationJob, Project } from "./types";
 
 let cachedDir: string | null = null;
 
@@ -80,9 +80,84 @@ export async function getProject(id: string): Promise<Project | null> {
 }
 
 export async function saveProject(p: Project): Promise<void> {
-  await ensureDirs();
-  p.updatedAt = new Date().toISOString();
-  await fs.writeFile(projectPath(p.id), JSON.stringify(p, null, 2), "utf-8");
+  return withProjectLock(p.id, async () => {
+    await ensureDirs();
+    p.updatedAt = new Date().toISOString();
+    await atomicWriteFile(projectPath(p.id), JSON.stringify(p, null, 2));
+  });
+}
+
+/**
+ * Concurrency-safe storage (the fix for "Job or project no longer exists"
+ * under parallel polling): temp-file + rename makes writes atomic (no torn
+ * reads), and a per-project promise chain serializes read-modify-write cycles
+ * (no lost jobs/scenes). NEVER hold the lock across network/FFmpeg work —
+ * only around the micro read+mutate+write section.
+ */
+const projectLocks = new Map<string, Promise<void>>();
+
+export async function withProjectLock<T>(projectId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = projectLocks.get(projectId) ?? Promise.resolve();
+  let release!: () => void;
+  const cur = new Promise<void>((r) => (release = r));
+  projectLocks.set(projectId, prev.then(() => cur));
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (projectLocks.get(projectId) === cur) projectLocks.delete(projectId);
+  }
+}
+
+async function atomicWriteFile(absPath: string, data: string): Promise<void> {
+  const tmp = `${absPath}.${process.pid}.tmp`;
+  await fs.writeFile(tmp, data, "utf-8");
+  await fs.rename(tmp, absPath);
+}
+
+const TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
+
+/**
+ * Surgical job persist: fresh-read the project under lock, replace ONLY this
+ * job object, save atomically. Terminal states set by others (e.g. replan
+ * cancel) are never revived. Returns null when project/job is gone.
+ */
+export async function persistJob(
+  projectId: string,
+  job: GenerationJob,
+  extra?: { stillPath?: string; sceneId?: string; log?: string }
+): Promise<{ project: Project; job: GenerationJob } | null> {
+  return withProjectLock(projectId, async () => {
+    await ensureDirs();
+    const fresh = await getProject(projectId);
+    if (!fresh) return null;
+    const fj = fresh.jobs.find((j) => j.id === job.id);
+    if (!fj) return null;
+    const cancelledElsewhere = TERMINAL.has(fj.status) && !TERMINAL.has(job.status);
+    if (!cancelledElsewhere) {
+      Object.assign(fj, job, { updatedAt: new Date().toISOString() });
+      if (extra?.log) fj.logs.push(extra.log);
+      if (extra?.stillPath && extra.sceneId) {
+        const sc = fresh.scenes.find((s) => s.id === extra.sceneId);
+        if (sc && !sc.stillPath) sc.stillPath = extra.stillPath;
+      }
+    }
+    await atomicWriteFile(projectPath(fresh.id), JSON.stringify({ ...fresh, updatedAt: new Date().toISOString() }, null, 2));
+    return { project: fresh, job: fj };
+  });
+}
+
+/** Locked job append — concurrent generate calls can never lose a job. */
+export async function pushJob(projectId: string, job: GenerationJob): Promise<Project> {
+  return withProjectLock(projectId, async () => {
+    await ensureDirs();
+    const fresh = await getProject(projectId);
+    if (!fresh) throw new Error("Project not found.");
+    if (!fresh.jobs.some((j) => j.id === job.id)) fresh.jobs.push(job);
+    await atomicWriteFile(projectPath(fresh.id), JSON.stringify({ ...fresh, updatedAt: new Date().toISOString() }, null, 2));
+    return fresh;
+  });
 }
 
 export function newId(prefix = ""): string {

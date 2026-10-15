@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { dataDir, getProject, saveProject, newId } from "@/lib/store";
+import { dataDir, getProject, saveProject, newId, pushJob } from "@/lib/store";
 import {
   createReplicatePrediction,
   indexJob,
@@ -70,8 +70,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     } else {
       job.logs.push(`Free still queued for scene ${scene.index + 1} (Pollinations, no key). ${freeTierNote()}`);
     }
-    p.jobs.push(job);
-    await saveProject(p);
+    await pushJob(p.id, job);
     await indexJob(p.id, job.id);
     return NextResponse.json({ job }, { status: 201 });
   }
@@ -99,8 +98,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     } else {
       job.logs.push("HF diffusers Movie: still from hosted diffusers (may bill to HF) + free motion on your PC.");
     }
-    p.jobs.push(job);
-    await saveProject(p);
+    await pushJob(p.id, job);
     await indexJob(p.id, job.id);
     return NextResponse.json({ job }, { status: 201 });
   }
@@ -110,8 +108,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     job.error =
       "Hyperframes projects don't use per-scene clips — press 'Export Hyperframes (free cinematic)' in Assemble & export, then run: npx hyperframes render -o zen-r-hyperframes.mp4";
     job.logs.push(job.error);
-    p.jobs.push(job);
-    await saveProject(p);
+    await pushJob(p.id, job);
     await indexJob(p.id, job.id);
     return NextResponse.json({ job }, { status: 201 });
   }
@@ -166,8 +163,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       job.error = e instanceof Error ? e.message : "Worker request failed.";
       job.logs.push(job.error);
     }
-    p.jobs.push(job);
-    await saveProject(p);
+    await pushJob(p.id, job);
     await indexJob(p.id, job.id);
     return NextResponse.json({ job }, { status: 201 });
   }
@@ -199,8 +195,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       job.error = e instanceof Error ? e.message : "Replicate request failed.";
       job.logs.push(`Failed before any generation: ${job.error}`);
     }
-    p.jobs.push(job);
-    await saveProject(p);
+    await pushJob(p.id, job);
     await indexJob(p.id, job.id);
     return NextResponse.json({ job }, { status: 201 });
   }

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { getProject, saveProject, saveUpload } from "@/lib/store";
+import { getProject, saveProject, saveUpload, pushJob } from "@/lib/store";
 import { indexJob } from "@/lib/providers";
 import { buildSrt } from "@/lib/ffmpeg";
 import { FREE_VOICES } from "@/lib/free";
@@ -62,8 +62,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ job: existing, note: "Voiceover already running — polling the same job." }, { status: 200 });
     }
     const job = createVoiceoverJob(voice, rate);
-    p.jobs.push(job);
-    await saveProject(p);
+    await pushJob(p.id, job);
     await indexJob(p.id, job.id);
     return NextResponse.json({ job, note: `Voiceover queued (${voice}). Poll /api/jobs/${job.id} — keep this page open.` }, { status: 201 });
   }

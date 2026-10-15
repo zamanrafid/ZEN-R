@@ -77,6 +77,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   p.prompt = prompt;
   if (body.negativePrompt !== undefined) p.negativePrompt = body.negativePrompt;
+  // Merge fresh jobs: background polls may have progressed while planning ran.
+  const freshPlan = await getProject(params.id);
+  if (freshPlan) p.jobs = freshPlan.jobs;
   p.title = board.title;
   p.summary = board.summary;
   p.narrationScript = board.narrationScript;

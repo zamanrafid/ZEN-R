@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { dataDir, getProject, newId, saveProject } from "./store";
+import { dataDir, getProject, newId, persistJob, saveProject } from "./store";
 import {
   concatMixedToMp3,
   concatMp3Parts,
@@ -63,14 +63,28 @@ export function voiceoverNote(primary: VoiceEngine, voice: string, fellBack: boo
   return "Offline robot voiceover ready (eSpeak NG). For a natural voice: pip install edge-tts, then pick Aria/Guy/Emma/Nabanita/Pradeep.";
 }
 
-async function patchJob(projectId: string, jobId: string, patch: Partial<GenerationJob>, log?: string): Promise<void> {
+class VoiceoverCancelled extends Error {}
+
+async function patchJob(
+  projectId: string,
+  jobId: string,
+  patch: Partial<GenerationJob>,
+  log?: string
+): Promise<"ok" | "gone" | "cancelled"> {
   const p = await getProject(projectId);
-  if (!p) return;
-  const j = p.jobs.find((x) => x.id === jobId);
-  if (!j || j.status === "cancelled") return;
-  Object.assign(j, patch, { updatedAt: new Date().toISOString() });
-  if (log) j.logs.push(log);
-  await saveProject(p);
+  const j = p?.jobs.find((x) => x.id === jobId);
+  if (!p || !j) return "gone";
+  if (j.status === "cancelled") return "cancelled";
+  const r = await persistJob(projectId, { ...j, ...patch }, log ? { log } : undefined);
+  if (!r) return "gone";
+  return r.job.status === "cancelled" ? "cancelled" : "ok";
+}
+
+async function throwIfCancelled(projectId: string, jobId: string): Promise<void> {
+  const p = await getProject(projectId);
+  if (p?.jobs.find((j) => j.id === jobId)?.status === "cancelled") {
+    throw new VoiceoverCancelled("Cancelled: storyboard was replanned.");
+  }
 }
 
 export async function runVoiceoverTask(projectId: string, jobId: string): Promise<void> {
@@ -179,11 +193,13 @@ export async function runVoiceoverTask(projectId: string, jobId: string): Promis
       while (cursor < tasks.length) {
         const i = cursor++;
         await synthOne(tasks[i], i);
+        await throwIfCancelled(projectId, jobId);
         done++;
         await patchJob(projectId, jobId, { progress: Math.min(85, 5 + Math.round((done / tasks.length) * 80)) });
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONC, tasks.length) }, () => worker()));
+    await throwIfCancelled(projectId, jobId);
 
     await patchJob(projectId, jobId, { progress: 88 }, "Joining + polishing voice…");
     const gapAbs = path.join(dir, `gap_${runStamp}.mp3`);
@@ -217,6 +233,7 @@ export async function runVoiceoverTask(projectId: string, jobId: string): Promis
     const fellBack = usedEngines.some((e) => e !== primary);
     await patchJob(projectId, jobId, { status: "succeeded", progress: 100 }, voiceoverNote(primary, voice, fellBack));
   } catch (e) {
+    if (e instanceof VoiceoverCancelled) return; // replan already marked it
     await fail(e instanceof Error ? e.message : "Voiceover failed.");
   }
 }

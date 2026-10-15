@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { dataDir, getProject, saveProject } from "./store";
+import { dataDir, getProject, persistJob } from "./store";
 import { downloadUrlToMedia, getReplicatePrediction } from "./providers";
 import { fetchStill, isRetriableFreeError } from "./free";
 import { workerPoll, workerStartJob } from "./worker";
@@ -146,6 +146,14 @@ export async function pollOneJob(projectId: string, jobId: string) {
     return { project: p, job };
   }
   const scene = p.scenes.find((s) => s.id === job.sceneId);
+  // Merged capture for still renders (persisted surgically onto fresh reads).
+  let stillRel: string | undefined;
+  // Surgical persist: merges ONLY this job (+optional still) into a fresh
+  // project read under lock — parallel polls can never lose each other's work.
+  const done = async (extra?: { stillPath?: string; sceneId?: string }) => {
+    return persistJob(projectId, job, extra);
+  };
+  const stillExtra = () => (stillRel && scene ? { stillPath: stillRel as string, sceneId: (scene as { id: string }).id } : undefined);
 
   // VOICEOVER job: long synth runs here so polls stay fast (no 600s timeout).
   // Overlap guard: only one runner per job per server process.
@@ -174,7 +182,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
     } else {
       try {
         job.status = "processing";
-        await materializeStill(p, scene, job);
+        stillRel = (await materializeStill(p, scene, job)).rel;
         job.status = "succeeded";
         job.attempts = 0;
         job.progress = 100;
@@ -196,8 +204,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
         }
       }
     }
-    await saveProject(p);
-    return { project: p, job };
+    return done(stillExtra());
   }
 
   // REMOTE + ZORO stills: YOUR A1111 WebUI / YOUR LocalAI / hosted HF diffusers / ZEN R Engine.
@@ -216,7 +223,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
         else if (job.providerId === "localai-still") job.logs.push("Requesting still from YOUR LocalAI…");
         else job.logs.push("Requesting still from hosted diffusers (HF Inference)…");
         const { buf, ext } = await fetchRemoteStill(job.providerId, p, scene, seed);
-        await saveStillBuffer(p, scene, job, buf, ext, seed);
+        stillRel = (await saveStillBuffer(p, scene, job, buf, ext, seed)).rel;
         job.status = "succeeded";
         job.progress = 100;
         job.logs.push("Remote still saved. It will be reused for this scene's movie clip.");
@@ -226,8 +233,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
         job.logs.push(job.error);
       }
     }
-    await saveProject(p);
-    return { project: p, job };
+    return done(stillExtra());
   }
 
   // MOVIE PIPELINE: still (+fetch if needed) then motion render.
@@ -237,8 +243,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
     if (!scene) {
       job.status = "failed";
       job.error = "Scene for this job no longer exists (storyboard was replanned).";
-      await saveProject(p);
-      return { project: p, job };
+      return done();
     }
     const remoteKind = remoteStillKind(p);
     try {
@@ -250,7 +255,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
           try {
             const seed = job.seed ?? Math.floor(Math.random() * 100000);
             const { buf, ext } = await fetchRemoteStill(remoteKind, p, scene, seed);
-            await saveStillBuffer(p, scene, job, buf, ext, seed);
+            stillRel = (await saveStillBuffer(p, scene, job, buf, ext, seed)).rel;
             job.attempts = 0;
             job.logs.push("Still ready — rendering motion next poll.");
             job.progress = 45;
@@ -266,7 +271,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
           job.progress = 20;
           job.logs.push("Fetching free AI still for this scene…");
           try {
-            await materializeStill(p, scene, job);
+            stillRel = (await materializeStill(p, scene, job)).rel;
             job.attempts = 0;
             job.logs.push("Still ready — rendering motion next poll.");
             job.progress = 45;
@@ -305,8 +310,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
       job.error = e instanceof Error ? e.message : "Free clip failed.";
       job.logs.push(job.error);
     }
-    await saveProject(p);
-    return { project: p, job };
+    return done(stillExtra());
   }
 
   // OWN MODEL: still image from your worker.
@@ -314,8 +318,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
     if (!scene) {
       job.status = "failed";
       job.error = "Scene for this job no longer exists (storyboard was replanned).";
-      await saveProject(p);
-      return { project: p, job };
+      return done();
     }
     try {
       const dims = stillDims(p.settings.aspectRatio);
@@ -340,7 +343,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
           const res = await fetch(st.outputUrl);
           if (!res.ok) throw new Error(`Could not download your worker's image (${res.status}).`);
           const buf = Buffer.from(await res.arrayBuffer());
-          await saveStillBuffer(p, scene, job, buf, extFromUrl(st.outputUrl, "jpg"), job.seed ?? 0);
+          stillRel = (await saveStillBuffer(p, scene, job, buf, extFromUrl(st.outputUrl, "jpg"), job.seed ?? 0)).rel;
           job.status = "succeeded";
           job.attempts = 0;
           job.progress = 100;
@@ -360,8 +363,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
       job.error = e instanceof Error ? e.message : "Worker still failed.";
       job.logs.push(job.error);
     }
-    await saveProject(p);
-    return { project: p, job };
+    return done(stillExtra());
   }
 
   // OWN MODEL: video clip from your worker.
@@ -395,8 +397,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
       job.error = e instanceof Error ? e.message : "Worker status check failed.";
       job.logs.push(job.error);
     }
-    await saveProject(p);
-    return { project: p, job };
+    return done(stillExtra());
   }
 
   if (job.providerId === "replicate" && job.providerJobId) {    try {
@@ -429,8 +430,7 @@ export async function pollOneJob(projectId: string, jobId: string) {
       job.error = e instanceof Error ? e.message : "Status check failed.";
       job.logs.push(job.error);
     }
-    await saveProject(p);
-    return { project: p, job };
+    return done(stillExtra());
   }
   return { project: p, job };
 }
