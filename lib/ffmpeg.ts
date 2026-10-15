@@ -51,17 +51,25 @@ export function srtTimestamp(totalSec: number): string {
   return `${p(h)}:${p(m)}:${p(s)},${String(r).padStart(3, "0")}`;
 }
 
-export function buildSrt(project: Project, orderedSceneIds: string[]): string {
+export function buildSrt(project: Project, orderedSceneIds: string[], xfadeSec = 0): string {
+  const X = Math.max(0, xfadeSec);
+  const starts: number[] = [];
+  const durs: number[] = [];
+  const texts: string[] = [];
   let t = 0;
-  const blocks: string[] = [];
-  orderedSceneIds.forEach((sid, i) => {
+  orderedSceneIds.forEach((sid) => {
     const sc = project.scenes.find((s) => s.id === sid);
     if (!sc) return;
-    const start = t;
-    const end = t + sc.durationSec;
-    const text = (sc.caption || sc.narrationSegment || `Scene ${i + 1}`).trim();
-    blocks.push(`${i + 1}\n${srtTimestamp(start)} --> ${srtTimestamp(end)}\n${text}\n`);
-    t = end;
+    starts.push(t - starts.length * X);
+    durs.push(sc.durationSec);
+    texts.push((sc.caption || sc.narrationSegment || `Scene ${texts.length + 1}`).trim());
+    t += sc.durationSec;
+  });
+  const blocks: string[] = [];
+  starts.forEach((start, i) => {
+    // Never overlap the next caption (xfade compresses the timeline).
+    const end = i < starts.length - 1 ? Math.min(start + durs[i], starts[i + 1]) : start + durs[i];
+    blocks.push(`${i + 1}\n${srtTimestamp(start)} --> ${srtTimestamp(Math.max(start + 0.5, end))}\n${texts[i]}\n`);
   });
   return blocks.join("\n");
 }
@@ -82,7 +90,9 @@ export async function assembleProject(
   // Prefer finished video clips; fall back to free AI stills (rendered with
   // motion on the fly) so a 100% free export always works. Failed jobs are
   // never used as filler, and gaps are reported — never silently skipped.
+  // includedScenes parallels clips[] for duration fallback + SRT alignment.
   const clips: string[] = [];
+  const includedScenes: Array<{ id: string; durationSec: number }> = [];
   const missing: string[] = [];
   orderedSceneIds.forEach((sid, i) => {
     const scene = project.scenes.find((s) => s.id === sid);
@@ -93,10 +103,12 @@ export async function assembleProject(
     const latest = picked ?? jobs[0];
     if (latest?.clipPath) {
       clips.push(path.join(dataDir(), latest.clipPath));
+      includedScenes.push({ id: sid, durationSec: scene?.durationSec ?? 5 });
       return;
     }
     if (scene?.stillPath) {
       clips.push(`STILL:${scene.stillPath}:${scene.durationSec}:${i}`);
+      includedScenes.push({ id: sid, durationSec: scene.durationSec });
       return;
     }
     missing.push(scene ? `Scene ${i + 1}` : sid);
@@ -141,11 +153,17 @@ export async function assembleProject(
   const outAbs = path.join(dataDir(), outRel);
   await fs.mkdir(path.dirname(outAbs), { recursive: true });
 
-  // Write SRT sidecar always (free, no filter needed).
+  // Write SRT sidecar always (free, no filter needed). Shifted for transitions.
+  const XSEC = clips.length > 1 ? 0.5 : 0;
   const srtRel = outRel.replace(/\.mp4$/, ".srt");
-  await fs.writeFile(path.join(dataDir(), srtRel), buildSrt(project, orderedSceneIds), "utf-8");
+  await fs.writeFile(
+    path.join(dataDir(), srtRel),
+    buildSrt(project, includedScenes.map((s) => s.id), XSEC),
+    "utf-8"
+  );
 
-  // Build ffmpeg args: normalize each input (scale+pad, 30fps, yuv420p, aac) then concat.
+  // Build ffmpeg args: normalize each input (scale+pad, 30fps, yuv420p) then
+  // fuse with cinematic fade transitions (xfade) instead of hard cuts.
   const args: string[] = ["-y"];
   for (const c of clips) args.push("-i", c);
   const narAbs = project.narrationAudioPath ? path.join(dataDir(), project.narrationAudioPath) : null;
@@ -161,23 +179,35 @@ export async function assembleProject(
   if (narExists) args.push("-i", narAbs!);
 
   const n = clips.length;
+  // Real clip durations drive the xfade offsets (fallback: planned scene length).
+  const durs: number[] = [];
+  for (let i = 0; i < n; i++) {
+    try {
+      const { probeVideo } = await import("./source");
+      const pr = await probeVideo(clips[i]);
+      durs.push(pr.durationSec > 0.5 ? pr.durationSec : includedScenes[i].durationSec);
+    } catch {
+      durs.push(includedScenes[i].durationSec);
+    }
+  }
+  const { filter: xfade, total } = buildXfadeChain(durs, XSEC);
   const filterParts: string[] = [];
   for (let i = 0; i < n; i++) {
     filterParts.push(
-      `[${i}:v]scale=${w}:${h}:flags=lanczos:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30,format=yuv420p${sharpenFilter(enc.sharpen)}[v${i}]`
+      `[${i}:v]scale=${w}:${h}:flags=lanczos:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,fps=30,format=yuv420p[v${i}]`
     );
   }
-  const vcat = Array.from({ length: n }, (_, i) => `[v${i}]`).join("") + `concat=n=${n}:v=1:a=0[vcat]`;
-  filterParts.push(vcat);
+  filterParts.push(xfade);
+  // Cinematic finish on the fused timeline: fades + grade.
+  filterParts.push(`[vcat]${fadeFilters(total)},${gradeFilter(quality)},format=yuv420p[vout]`);
 
   let mapArgs: string[];
   if (narExists) {
     const ai = n; // narration input index
-    filterParts.push(`[${ai}:a]volume=${opts.narrationVolume ?? 1.0},aformat=sample_fmts=fltp:channel_layouts=stereo[na]`);
-    filterParts.push(`[vcat]null[vout]`);
+    // apad: narration shorter than video → trailing silence, never a cut video.
+    filterParts.push(`[${ai}:a]volume=${opts.narrationVolume ?? 1.0},aformat=sample_fmts=fltp:channel_layouts=stereo,apad[na]`);
     mapArgs = ["-map", "[vout]", "-map", "[na]", "-c:a", "aac", "-b:a", `${enc.audioKbps}k`, "-shortest"];
   } else {
-    filterParts.push(`[vcat]null[vout]`);
     mapArgs = ["-map", "[vout]"];
   }
 
@@ -255,7 +285,8 @@ export async function renderStillClip(
     `zoompan=z='1.15':x='(iw-iw/zoom)*(1-on/${frames})':y='ih/2-(ih/zoom/2)'`
   ];
   const move = moves[Math.abs(variant) % moves.length];
-  const vf = `scale=${W}:${H}:flags=lanczos:force_original_aspect_ratio=increase,crop=${W}:${H},${move}:d=${frames}:s=${w}x${h}:fps=30,format=yuv420p${sharpenFilter(enc.sharpen)}`;
+  // Motion → fades → grade: cinematic feel from a single still, all local.
+  const vf = `scale=${W}:${H}:flags=lanczos:force_original_aspect_ratio=increase,crop=${W}:${H},${move}:d=${frames}:s=${w}x${h}:fps=30,${fadeFilters(dur)},format=yuv420p,${gradeFilter(quality)}`;
   const outAbs = path.join(dataDir(), outRelPath);
   await fs.mkdir(path.dirname(outAbs), { recursive: true });
   await new Promise<void>((resolve, reject) => {
@@ -316,4 +347,64 @@ export async function concatWavParts(partAbsPaths: string[], outAbsPath: string)
     child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`Voice join failed (exit ${code}).`))));
   });
   await fs.unlink(listFile).catch(() => undefined);
+}
+
+/** Write a short silence MP3 — natural breathing pauses between narration chunks. */
+export async function writeSilenceMp3(outAbsPath: string, sec = 0.35): Promise<void> {
+  const s = Math.max(0.1, Math.min(2, sec));
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(ffmpegBin(), ["-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", String(s), "-c:a", "libmp3lame", "-b:a", "96k", outAbsPath],
+      { stdio: ["ignore", "pipe", "pipe"] });
+    child.on("error", (e) => reject(new Error(`Could not launch FFmpeg: ${e.message}`)));
+    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`Silence render failed (exit ${code}).`))));
+  });
+}
+
+/**
+ * Broadcast-style loudness normalize (single pass). Throws — caller falls back
+ * to the unnormalized file so voiceover never fails because of polish.
+ */
+export async function normalizeVoice(inAbsPath: string, outAbsPath: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(ffmpegBin(), ["-y", "-i", inAbsPath, "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-c:a", "libmp3lame", "-b:a", "128k", outAbsPath],
+      { stdio: ["ignore", "pipe", "pipe"] });
+    child.on("error", (e) => reject(new Error(`Could not launch FFmpeg: ${e.message}`)));
+    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`Normalize failed (exit ${code}).`))));
+  });
+}
+
+/** Pure builder (tested): fade in/out args for a clip of totalSec. */
+export function fadeFilters(totalSec: number, fadeSec = 0.5): string {
+  const f = Math.max(0.1, Math.min(1.5, fadeSec));
+  const end = Math.max(f, totalSec - f);
+  return `fade=t=in:st=0:d=${f},fade=t=out:st=${end.toFixed(2)}:d=${f}`;
+}
+
+/** Pure builder (tested): cinematic grade shared by motion clips + assembly. */
+export function gradeFilter(quality: Quality): string {
+  // Gentle S-curve feel: lift saturation/contrast, vignette, fine grain.
+  const base = `eq=saturation=1.12:contrast=1.06,vignette=PI/4.6,noise=alls=7:allf=t`;
+  return quality === "best" ? `${base},unsharp=5:5:0.4:5:5:0.0` : base;
+}
+
+/**
+ * Pure builder (tested): xfade chain fusing n clips with fade transitions.
+ * durations = per-clip seconds; returns filter string + timeline total.
+ */
+export function buildXfadeChain(durations: number[], xSec = 0.5): { filter: string; total: number } {
+  const n = durations.length;
+  const X = Math.max(0.1, Math.min(1, xSec));
+  if (n === 0) return { filter: "", total: 0 };
+  if (n === 1) return { filter: "[v0]null[vcat]", total: Math.max(0.5, durations[0]) };
+  const parts: string[] = [];
+  let acc = durations[0];
+  let prev = "[v0]";
+  for (let i = 1; i < n; i++) {
+    const off = Math.max(0, acc - X);
+    const out = i === n - 1 ? "[vcat]" : `[x${i}]`;
+    parts.push(`${prev}[v${i}]xfade=transition=fade:duration=${X}:offset=${off.toFixed(2)}${out}`);
+    acc = acc + durations[i] - X;
+    prev = out;
+  }
+  return { filter: parts.join(";"), total: Math.max(0.5, Math.round(acc * 100) / 100) };
 }

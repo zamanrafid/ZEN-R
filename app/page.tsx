@@ -21,7 +21,8 @@ const HOME_VOICES = [
   { id: "davis", label: "Davis ♂" },
   { id: "emma", label: "Emma" },
   { id: "nabanita", label: "Nabanita ♀" },
-  { id: "pradeep", label: "Pradeep ♂" }
+  { id: "pradeep", label: "Pradeep ♂" },
+  { id: "eleven", label: "ElevenLabs ★ (paid key)" }
 ];
 
 function loadPrefs() {

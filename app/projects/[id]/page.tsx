@@ -255,7 +255,8 @@ export default function Studio({ params }: { params: { id: string } }) {
     { id: "nabanita", label: "Nabanita — Bangla female" },
     { id: "pradeep", label: "Pradeep — Bangla male" },
     { id: "nova", label: "Nova — AI voice (hosted)" },
-    { id: "robot", label: "Robot — offline fallback" }
+    { id: "robot", label: "Robot — offline fallback" },
+    { id: "eleven", label: "ElevenLabs — studio quality (paid key)" },
   ];
   const [voiceRate, setVoiceRate] = useState<"slow" | "normal" | "fast">("normal");
   const [autoLog, setAutoLog] = useState<string[]>([]);
@@ -822,7 +823,7 @@ export default function Studio({ params }: { params: { id: string } }) {
         </div>
         {project.narrationAudioPath && <audio controls src={`/api/media/${project.narrationAudioPath}`} className="mt-3 w-full max-w-xl" />}
         <p className="mt-2 text-xs text-muted">
-          Natural voices (Aria/Guy/Emma/Nabanita/Pradeep) are free neural voices, no key.
+          Natural voices (Aria/Guy/Emma/Nabanita/Pradeep) are free neural voices, no key — auto-fallback: local Kokoro AI (offline after first run), then hosted, then robot.
           Robot voice works fully offline. Or record/upload your own voice above.
           {project.scenes.length > 12 && ` This project has ${project.scenes.length} scenes — voiceover may take ~${Math.round(project.scenes.length * 0.35)} min. Keep this page open.`}
         </p>

@@ -66,6 +66,7 @@ for higher limits + watermark removal. Free-tier images may carry a watermark.
 | OpenMontage pattern | Remix pipeline: Shorts -> storyboard (`fromSource:true`) | Nothing (built-in) |
 | Pixelle parity | Topic -> script -> stills -> edge-TTS -> BGM -> MP4, all free | Nothing (built-in) |
 | Toonflow style | `toon-panels` reference pack for comic/drama look | Nothing (built-in) |
+| ElevenLabs (opt-in, PAID) | Studio voice via `eleven` voice id (`ELEVENLABS_API_KEY`) — free fallbacks auto | API key |
 | Khoj | Research your docs/web before scripting (`KHOJ_URL`) | Khoj server |
 | Unsloth | Dataset export (`GET .../dataset` JSONL) — training needs NVIDIA GPU | GPU elsewhere |
 
