@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ZoroLogo, StatusBadge, SectionHead } from "@/components/ui";
+import { ZoroLogo, StatusBadge, SectionHead, FooterCredit } from "@/components/ui";
 import { fetchJson, apiError } from "@/lib/client";
 import { MAX_PROMPT } from "@/lib/validate";
 import type { Project, GenerationJob } from "@/lib/types";
@@ -397,43 +397,75 @@ export default function Studio({ params }: { params: { id: string } }) {
         proj = await refresh();
         log(`Storyboard ready: ${proj.scenes.length} scene.`);
       } else log("Step 1/5: storyboard is already ready.");
-      // 2. Stills
-      for (const sid of proj.sceneOrder) {
-        const sc = proj.scenes.find((s) => s.id === sid)!;
-        if (sc.stillPath) { log(`Scene ${sc.index + 1}: image already exists, skipping.`); continue; }
-        log(`Step 2/5: generating image for scene ${sc.index + 1} (free, takes a little while)…`);
-        const { ok, status, data } = await fetchJson(`/api/projects/${id}/generate`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sceneId: sid, kind: "still" })
-        }, 60000);
-        if (!ok || !data.job) throw new Error(apiError(status, data, "Still request failed."));
-        await pollJobToEnd((data.job as GenerationJob).id, 480000);
+      // 2. Stills — 3 concurrent (free-tier fetches serialize server-side).
+      {
+        const pending = proj.sceneOrder.filter((sid) => {
+          const sc = proj.scenes.find((s) => s.id === sid)!;
+          if (sc.stillPath) { log(`Scene ${sc.index + 1}: image already exists, skipping.`); return false; }
+          return true;
+        });
+        let cursor = 0;
+        let failed = "";
+        const worker = async () => {
+          while (!failed && cursor < pending.length) {
+            const sid = pending[cursor++];
+            const sc = proj.scenes.find((s) => s.id === sid)!;
+            log(`Step 2/5: generating image for scene ${sc.index + 1}…`);
+            const { ok, status, data } = await fetchJson(`/api/projects/${id}/generate`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sceneId: sid, kind: "still" })
+            }, 60000);
+            if (!ok || !data.job) { failed = apiError(status, data, "Still request failed."); return; }
+            try {
+              await pollJobToEnd((data.job as GenerationJob).id, 480000);
+            } catch (e) { failed = e instanceof Error ? e.message : "Still failed."; return; }
+            log(`Scene ${sc.index + 1}: image ready.`);
+          }
+        };
+        await Promise.all(Array.from({ length: Math.max(1, Math.min(3, pending.length)) }, () => worker()));
+        if (failed) throw new Error(failed);
         proj = await refresh();
-        log(`Scene ${sc.index + 1}: image ready.`);
       }
-      // 3. Clips
-      for (const sid of proj.sceneOrder) {
-        const sc = proj.scenes.find((s) => s.id === sid)!;
-        const done = (proj.jobs ?? []).some((j) => j.sceneId === sid && j.status === "succeeded" && j.clipPath);
-        if (done) { log(`Scene ${sc.index + 1}: clip already exists, skipping.`); continue; }
-        log(`Step 3/5: rendering video for scene ${sc.index + 1}…`);
-        const { ok, status, data } = await fetchJson(`/api/projects/${id}/generate`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sceneId: sid, kind: "video" })
-        }, 60000);
-        if (!ok || !data.job) throw new Error(apiError(status, data, "Clip request failed."));
-        await pollJobToEnd((data.job as GenerationJob).id, 600000);
+      // 3. Clips — 3 concurrent motion renders.
+      {
+        const jobs0 = proj.jobs ?? [];
+        const pending = proj.sceneOrder.filter((sid) => {
+          const sc = proj.scenes.find((s) => s.id === sid)!;
+          const done = jobs0.some((j) => j.sceneId === sid && j.status === "succeeded" && j.clipPath);
+          if (done) { log(`Scene ${sc.index + 1}: clip already exists, skipping.`); return false; }
+          return true;
+        });
+        let cursor = 0;
+        let failed = "";
+        const worker = async () => {
+          while (!failed && cursor < pending.length) {
+            const sid = pending[cursor++];
+            const sc = proj.scenes.find((s) => s.id === sid)!;
+            log(`Step 3/5: rendering video for scene ${sc.index + 1}…`);
+            const { ok, status, data } = await fetchJson(`/api/projects/${id}/generate`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sceneId: sid, kind: "video" })
+            }, 60000);
+            if (!ok || !data.job) { failed = apiError(status, data, "Clip request failed."); return; }
+            try {
+              await pollJobToEnd((data.job as GenerationJob).id, 600000);
+            } catch (e) { failed = e instanceof Error ? e.message : "Clip failed."; return; }
+            log(`Scene ${sc.index + 1}: video ready.`);
+          }
+        };
+        await Promise.all(Array.from({ length: Math.max(1, Math.min(3, pending.length)) }, () => worker()));
+        if (failed) throw new Error(failed);
         proj = await refresh();
-        log(`Scene ${sc.index + 1}: video ready.`);
       }
-      // 4. Voice
+      // 4. Voice (background job — no 600s timeout).
       if (!proj.narrationAudioPath) {
-        log("Step 4/5: generating voiceover (free)…");
+        log("Step 4/5: generating voiceover in background…");
         const { ok, status, data } = await fetchJson(`/api/projects/${id}/narration`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tts: true, voice })
-        }, 600000);
-        if (!ok) throw new Error(apiError(status, data, "Voiceover failed."));
+        }, 30000);
+        if (!ok || !(data as { job?: GenerationJob }).job) throw new Error(apiError(status, data, "Voiceover failed."));
+        await pollJobToEnd(((data as { job: GenerationJob }).job as GenerationJob).id, 3600000);
         proj = await refresh();
         log("Voice ready.");
       } else log("Step 4/5: voiceover already exists.");
@@ -464,11 +496,13 @@ export default function Studio({ params }: { params: { id: string } }) {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tts: true, voice, rate: voiceRate })
         },
-        600000
+        30000
       );
-      if (!ok || !data.project) throw new Error(apiError(status, data, "Voiceover failed."));
-      setProject(data.project as Project);
-      setNotice((data.note as string) ?? "Free voiceover ready.");
+      if (!ok || !(data as { job?: GenerationJob }).job) throw new Error(apiError(status, data, "Voiceover failed."));
+      setNotice("Voiceover running in background — this stays responsive, keep the page open.");
+      await pollJobToEnd(((data as { job: GenerationJob }).job as GenerationJob).id, 3600000);
+      await load();
+      setNotice("Voiceover ready — mixed under the final export.");
     } catch (e) { setError(e instanceof Error ? e.message : "Voiceover failed."); }
     finally { setBusy(""); }
   }
@@ -882,6 +916,7 @@ export default function Studio({ params }: { params: { id: string } }) {
         )}
         <p className="mt-2 text-xs text-muted">No ZEN R watermark is ever added. Free Movie Mode exports from your AI stills even if some clips never rendered.</p>
       </section>
+      <div className="mt-10"><FooterCredit /></div>
     </main>
   );
 }

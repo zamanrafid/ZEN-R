@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ZoroLogo } from "@/components/ui";
+import { ZoroLogo, FooterCredit } from "@/components/ui";
 import { fetchJson, apiError } from "@/lib/client";
 import { MAX_PROMPT } from "@/lib/validate";
 import type { GenerationJob, Project, ProviderInfo } from "@/lib/types";
@@ -160,54 +160,78 @@ export default function Home() {
       setStep("story", "done");
       pushLog(`${p.scenes.length} scenes ready.`);
 
-      // Images
+      // Images — 3 concurrent (server serializes free-tier fetches; renders parallelize).
       setStep("images", "doing");
-      let done = p.scenes.filter((s) => s.stillPath).length;
-      setCounts((k) => ({ ...k, images: [done, p.scenes.length] }));
-      for (const sid of p.sceneOrder) {
-        const sc = p.scenes.find((s) => s.id === sid)!;
-        if (sc.stillPath) continue;
-        pushLog(`Painting scene ${sc.index + 1} of ${p.scenes.length}…`);
-        const g = await fetchJson(`/api/projects/${proj.id}/generate`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sceneId: sid, kind: "still" })
-        }, 60000);
-        if (!g.ok || !g.data.job) throw new Error(apiError(g.status, g.data, "Image request failed."));
-        await pollJobToEnd((g.data.job as GenerationJob).id, 480000);
+      {
+        const pending = p.sceneOrder.filter((sid) => !p.scenes.find((s) => s.id === sid)?.stillPath);
+        let cursor = 0;
+        let failed = "";
+        const iworker = async () => {
+          while (!failed && cursor < pending.length) {
+            const sid = pending[cursor++];
+            const sc = p.scenes.find((s) => s.id === sid)!;
+            pushLog(`Painting scene ${sc.index + 1} of ${p.scenes.length}…`);
+            const g = await fetchJson(`/api/projects/${proj.id}/generate`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sceneId: sid, kind: "still" })
+            }, 60000);
+            if (!g.ok || !g.data.job) { failed = apiError(g.status, g.data, "Image request failed."); return; }
+            try {
+              await pollJobToEnd((g.data.job as GenerationJob).id, 480000);
+            } catch (e) { failed = e instanceof Error ? e.message : "Image failed."; return; }
+            const fresh = await getP();
+            setCounts((k) => ({ ...k, images: [fresh.scenes.filter((s) => s.stillPath).length, fresh.scenes.length] }));
+          }
+        };
+        await Promise.all(Array.from({ length: Math.max(1, Math.min(3, pending.length)) }, () => iworker()));
+        if (failed) throw new Error(failed);
         p = await getP();
-        done = p.scenes.filter((s) => s.stillPath).length;
-        setCounts((k) => ({ ...k, images: [done, p.scenes.length] }));
       }
       setStep("images", "done");
 
-      // Clips
+      // Clips — 3 concurrent FFmpeg motion renders.
       setStep("clips", "doing");
-      const clipDone = () => (p.jobs ?? []).filter((j) => j.status === "succeeded" && j.clipPath).length;
-      setCounts((k) => ({ ...k, clips: [clipDone(), p.scenes.length] }));
-      for (const sid of p.sceneOrder) {
-        const sc = p.scenes.find((s) => s.id === sid)!;
-        const has = (p.jobs ?? []).some((j) => j.sceneId === sid && j.status === "succeeded" && j.clipPath);
-        if (has) continue;
-        pushLog(`Animating scene ${sc.index + 1} of ${p.scenes.length}…`);
-        const g = await fetchJson(`/api/projects/${proj.id}/generate`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sceneId: sid, kind: "video" })
-        }, 60000);
-        if (!g.ok || !g.data.job) throw new Error(apiError(g.status, g.data, "Clip request failed."));
-        await pollJobToEnd((g.data.job as GenerationJob).id, 600000);
+      {
+        const jobs0 = p.jobs ?? [];
+        const pending = p.sceneOrder.filter((sid) => !jobs0.some((j) => j.sceneId === sid && j.status === "succeeded" && j.clipPath));
+        let cursor = 0;
+        let failed = "";
+        const cworker = async () => {
+          while (!failed && cursor < pending.length) {
+            const sid = pending[cursor++];
+            const sc = p.scenes.find((s) => s.id === sid)!;
+            pushLog(`Animating scene ${sc.index + 1} of ${p.scenes.length}…`);
+            const g = await fetchJson(`/api/projects/${proj.id}/generate`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sceneId: sid, kind: "video" })
+            }, 60000);
+            if (!g.ok || !g.data.job) { failed = apiError(g.status, g.data, "Clip request failed."); return; }
+            try {
+              await pollJobToEnd((g.data.job as GenerationJob).id, 600000);
+            } catch (e) { failed = e instanceof Error ? e.message : "Clip failed."; return; }
+            const fresh = await getP();
+            setCounts((k) => ({ ...k, clips: [(fresh.jobs ?? []).filter((j) => j.status === "succeeded" && j.clipPath).length, fresh.scenes.length] }));
+          }
+        };
+        await Promise.all(Array.from({ length: Math.max(1, Math.min(3, pending.length)) }, () => cworker()));
+        if (failed) throw new Error(failed);
         p = await getP();
-        setCounts((k) => ({ ...k, clips: [clipDone(), p.scenes.length] }));
       }
       setStep("clips", "done");
 
-      // Voice
+      // Voice (background job — polls fast, never hits the 600s timeout).
       setStep("voice", "doing");
-      pushLog("Recording the voiceover…");
+      pushLog("Recording the voiceover (background job)…");
       const t = await fetchJson(`/api/projects/${proj.id}/narration`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tts: true, voice })
-      }, 600000);
+      }, 30000);
       if (!t.ok) throw new Error(apiError(t.status, t.data, "Voiceover failed."));
+      {
+        const vjob = (t.data as { job: GenerationJob }).job;
+        pushLog(`Voiceover running in background (${vjob.id.slice(-6)}) — polling…`);
+        await pollJobToEnd(vjob.id, 3600000);
+      }
       p = await getP();
       setStep("voice", "done");
 
@@ -389,9 +413,12 @@ export default function Home() {
           </>
         )}
 
-        <footer className="mt-auto pt-10 text-center text-[11px] text-muted">
-          ZEN R · Free Movie engine · No watermark ·{" "}
-          <Link href={projectId ? `/projects/${projectId}` : "/"} className="underline">Advanced Studio</Link>
+        <footer className="mt-auto space-y-2 pt-10 text-center text-[11px] text-muted">
+          <p>
+            ZEN R · Free Movie engine · No watermark ·{" "}
+            <Link href={projectId ? `/projects/${projectId}` : "/"} className="underline">Advanced Studio</Link>
+          </p>
+          <FooterCredit />
         </footer>
       </main>
     </div>

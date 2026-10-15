@@ -89,6 +89,9 @@ export interface GenerationJob {
   error?: string;
   logs: string[];
   seed?: number;
+  /** Voiceover job params (providerId "voiceover" only). */
+  voice?: string;
+  voiceRate?: "slow" | "normal" | "fast";
   /** Consecutive retriable-error count (free-tier busy) before giving up. */
   attempts?: number;
   createdAt: string;

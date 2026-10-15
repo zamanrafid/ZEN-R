@@ -95,3 +95,11 @@ export function Spinner({ label }: { label?: string }) {
     </span>
   );
 }
+
+export function FooterCredit() {
+  return (
+    <p className="text-center text-[11px] text-muted">
+      © {new Date().getFullYear()} ZEN R — All rights reserved. Developed by Rafid Zaman.
+    </p>
+  );
+}

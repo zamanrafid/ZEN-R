@@ -8,6 +8,7 @@ import { fetchA1111Still } from "./a1111";
 import { fetchLocalaiStill } from "./localai";
 import { fetchHfStill } from "./hfimage";
 import { generateZoroStill } from "./zoro-engine";
+import { runVoiceoverTask } from "./voiceover";
 import { projectQuality, renderStillClip } from "./ffmpeg";
 import type { AspectRatio, GenerationJob, Project, ScenePlan } from "./types";
 
@@ -99,6 +100,9 @@ function extFromUrl(u: string, fallback: string): string {
 }
 
 /** Advance exactly one job and persist. Handles free stills, slideshow clips, replicate. */
+/** Overlap guard: one voiceover runner per job per server process. */
+const voiceoverLocks = new Set<string>();
+
 /** Fetch a still from ZEN R Engine (local) / A1111 / LocalAI / HF diffusers. */
 export async function fetchRemoteStill(
   kind: "zoro-still" | "a1111-still" | "localai-still" | "hf-still",
@@ -142,6 +146,22 @@ export async function pollOneJob(projectId: string, jobId: string) {
     return { project: p, job };
   }
   const scene = p.scenes.find((s) => s.id === job.sceneId);
+
+  // VOICEOVER job: long synth runs here so polls stay fast (no 600s timeout).
+  // Overlap guard: only one runner per job per server process.
+  if (job.providerId === "voiceover") {
+    if (voiceoverLocks.has(job.id)) return { project: p, job };
+    voiceoverLocks.add(job.id);
+    try {
+      await runVoiceoverTask(projectId, job.id);
+    } finally {
+      voiceoverLocks.delete(job.id);
+    }
+    const updated = await getProject(projectId);
+    const uj = updated?.jobs.find((j) => j.id === jobId);
+    if (!updated || !uj) return null;
+    return { project: updated, job: uj };
+  }
 
   // FREE still image job (providerId "free-still")
   if (job.providerId === "free-still") {

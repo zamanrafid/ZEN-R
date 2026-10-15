@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CHUNK_GAP_SEC, HOSTED_TO_EDGE, edgeVoiceFor, resolveVoiceEngines } from "../lib/voice";
 import { kokoroSpeed, kokoroVoiceFor } from "../lib/kokoro";
 import { elevenlabsModel, elevenlabsPayload, elevenlabsTtsUrl } from "../lib/elevenlabs";
+import { createVoiceoverJob, voiceoverNote } from "../lib/voiceover";
 import { buildSrt, buildXfadeChain, fadeFilters, gradeFilter } from "../lib/ffmpeg";
 
 describe("voice engine resolution (best voice wins)", () => {
@@ -32,6 +33,25 @@ describe("voice engine resolution (best voice wins)", () => {
     expect(resolveVoiceEngines("aria", { edge: false, kokoro: false, hosted: false, offline: false, eleven: false }))
       .toEqual([]);
     expect(CHUNK_GAP_SEC).toBeGreaterThan(0);
+  });
+});
+
+describe("background voiceover jobs (600s timeout fix)", () => {
+  it("creates a queued voiceover job carrying voice + rate", () => {
+    const j = createVoiceoverJob("aria", "fast");
+    expect(j.providerId).toBe("voiceover");
+    expect(j.status).toBe("queued");
+    expect(j.voice).toBe("aria");
+    expect(j.voiceRate).toBe("fast");
+    expect(j.id.length).toBeGreaterThan(5);
+  });
+
+  it("notes name the real engine + fallback honestly", () => {
+    expect(voiceoverNote("eleven", "eleven", false)).toMatch(/ElevenLabs studio/i);
+    expect(voiceoverNote("eleven", "eleven", true)).toMatch(/continued with free/i);
+    expect(voiceoverNote("edge", "aria", false)).toMatch(/no key/i);
+    expect(voiceoverNote("kokoro", "aria", false)).toMatch(/Kokoro/i);
+    expect(voiceoverNote("offline", "robot", false)).toMatch(/eSpeak/i);
   });
 });
 
