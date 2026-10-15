@@ -18,7 +18,7 @@ import type { GenerationJob } from "@/lib/types";
  * POST: start a generation job for one scene.
  * Body: { sceneId, kind?: "video" | "still" }
  * - kind "still": free still, or YOUR worker when the project uses it.
- * - kind "video": per project.providerId (slideshow / worker / replicate / huggingface).
+ * - kind "video": per project.providerId (slideshow / zoro-engine / worker / replicate / a1111 / localai / huggingface).
  */
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const p = await getProject(params.id);
@@ -64,6 +64,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     } else if (p.providerId === "huggingface") {
       job.providerId = "hf-still";
       job.logs.push("Still queued on hosted diffusers (HF Inference — may bill to your HF account).");
+    } else if (p.providerId === "zoro-engine") {
+      job.providerId = "zoro-still";
+      job.logs.push("Still queued on Zoro Engine (100% offline, zero dependence).");
     } else {
       job.logs.push(`Free still queued for scene ${scene.index + 1} (Pollinations, no key). ${freeTierNote()}`);
     }
@@ -78,7 +81,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // Stills + local motion pipeline: slideshow (Pollinations) + remote-still
   // providers (A1111 / LocalAI / HF diffusers) whose motion renders on your PC.
-  if (provider.id === "slideshow" || provider.id === "a1111" || provider.id === "localai" || provider.id === "huggingface") {
+  if (provider.id === "slideshow" || provider.id === "zoro-engine" || provider.id === "a1111" || provider.id === "localai" || provider.id === "huggingface") {
     if (!provider.configured) {
       return NextResponse.json(
         { error: `${provider.label} is not configured. ${provider.missing} Nothing was sent anywhere. Tip: use "Free Movie Mode" for a 100% free pipeline.` },
@@ -87,6 +90,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
     if (provider.id === "slideshow") {
       job.logs.push("Free Movie Mode: AI still + cinematic motion, rendered on your PC. No cost, no key.");
+    } else if (provider.id === "zoro-engine") {
+      job.logs.push("Zoro Engine: own procedural still + cinematic motion, 100% offline. No cost, no key, no internet.");
     } else if (provider.id === "a1111") {
       job.logs.push("A1111 Movie: still from YOUR WebUI (your GPU/model) + cinematic motion on your PC. No cost, no key.");
     } else if (provider.id === "localai") {

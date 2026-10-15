@@ -54,6 +54,18 @@ export const PROVIDER_META: Array<{
     resolutions: ["1080x1920", "1920x1080", "1080x1080"]
   },
   {
+    id: "zoro-engine",
+    label: "Zoro Engine (100% own, offline, zero dependence)",
+    kind: "zoro",
+    requiresApiKey: false,
+    costNote: "100% OWN: procedural cinematic stills (pure TypeScript, no download) + motion/voice/render on your PC. No key, no account, no internet needed after install. Honest label: deterministic art, not AI diffusion.",
+    supportsReferenceImages: true,
+    referenceNote: "Character names seed the composition; same prompt + seed = byte-identical frame every time.",
+    maxClipSec: 5,
+    supportedAspects: ["9:16", "16:9", "1:1"],
+    resolutions: ["768x1344", "1024x576", "768x768"]
+  },
+  {
     id: "a1111",
     label: "A1111 WebUI (your GPU, your SD model, free)",
     kind: "a1111",

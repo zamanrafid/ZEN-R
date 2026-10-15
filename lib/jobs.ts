@@ -7,6 +7,7 @@ import { workerPoll, workerStartJob } from "./worker";
 import { fetchA1111Still } from "./a1111";
 import { fetchLocalaiStill } from "./localai";
 import { fetchHfStill } from "./hfimage";
+import { generateZoroStill } from "./zoro-engine";
 import { projectQuality, renderStillClip } from "./ffmpeg";
 import type { AspectRatio, GenerationJob, Project, ScenePlan } from "./types";
 
@@ -98,9 +99,9 @@ function extFromUrl(u: string, fallback: string): string {
 }
 
 /** Advance exactly one job and persist. Handles free stills, slideshow clips, replicate. */
-/** Fetch a still from A1111 / LocalAI / HF diffusers. Returns raw bytes + file ext. */
+/** Fetch a still from Zoro Engine (local) / A1111 / LocalAI / HF diffusers. */
 export async function fetchRemoteStill(
-  kind: "a1111-still" | "localai-still" | "hf-still",
+  kind: "zoro-still" | "a1111-still" | "localai-still" | "hf-still",
   p: Project,
   scene: ScenePlan,
   seed: number
@@ -108,6 +109,12 @@ export async function fetchRemoteStill(
   const dims = stillDims(p.settings.aspectRatio, projectQuality(p) === "best");
   const prompt = stillPromptFor(p, scene);
   const negative = scene.negativePrompt ?? p.negativePrompt;
+  if (kind === "zoro-still") {
+    return {
+      buf: generateZoroStill({ prompt, style: p.settings.style, width: dims.width, height: dims.height, seed }),
+      ext: "png"
+    };
+  }
   if (kind === "a1111-still") {
     return { buf: await fetchA1111Still({ prompt, negativePrompt: negative, ...dims, seed }), ext: "png" };
   }
@@ -117,8 +124,9 @@ export async function fetchRemoteStill(
   return { buf: await fetchHfStill({ prompt, negativePrompt: negative, ...dims, seed }), ext: "jpg" };
 }
 
-/** Map a movie-pipeline provider to its remote-still kind (null = Pollinations free tier). */
-export function remoteStillKind(p: Project): "a1111-still" | "localai-still" | "hf-still" | null {
+/** Map a movie-pipeline provider to its still kind (null = Pollinations free tier). */
+export function remoteStillKind(p: Project): "zoro-still" | "a1111-still" | "localai-still" | "hf-still" | null {
+  if (p.providerId === "zoro-engine") return "zoro-still";
   if (p.providerId === "a1111") return "a1111-still";
   if (p.providerId === "localai") return "localai-still";
   if (p.providerId === "huggingface") return "hf-still";
@@ -172,9 +180,9 @@ export async function pollOneJob(projectId: string, jobId: string) {
     return { project: p, job };
   }
 
-  // REMOTE stills: YOUR A1111 WebUI / YOUR LocalAI / hosted HF diffusers.
-  // All three return raw image bytes → saved exactly like free stills.
-  if (job.providerId === "a1111-still" || job.providerId === "localai-still" || job.providerId === "hf-still") {
+  // REMOTE + ZORO stills: YOUR A1111 WebUI / YOUR LocalAI / hosted HF diffusers / Zoro Engine.
+  // All return raw image bytes → saved exactly like free stills. Zoro Engine is instant + offline.
+  if (job.providerId === "zoro-still" || job.providerId === "a1111-still" || job.providerId === "localai-still" || job.providerId === "hf-still") {
     if (!scene) {
       job.status = "failed";
       job.error = "Scene for this job no longer exists (storyboard was replanned).";
@@ -183,7 +191,8 @@ export async function pollOneJob(projectId: string, jobId: string) {
         job.status = "processing";
         job.progress = 30;
         const seed = job.seed ?? Math.floor(Math.random() * 100000);
-        if (job.providerId === "a1111-still") job.logs.push("Requesting still from YOUR A1111 WebUI…");
+        if (job.providerId === "zoro-still") job.logs.push("Rendering still with Zoro Engine (offline)…");
+        else if (job.providerId === "a1111-still") job.logs.push("Requesting still from YOUR A1111 WebUI…");
         else if (job.providerId === "localai-still") job.logs.push("Requesting still from YOUR LocalAI…");
         else job.logs.push("Requesting still from hosted diffusers (HF Inference)…");
         const { buf, ext } = await fetchRemoteStill(job.providerId, p, scene, seed);
@@ -202,9 +211,9 @@ export async function pollOneJob(projectId: string, jobId: string) {
   }
 
   // MOVIE PIPELINE: still (+fetch if needed) then motion render.
-  // slideshow = Pollinations free stills; a1111/localai/huggingface fetch the
-  // still from their own engine, motion always renders locally with FFmpeg.
-  if (job.providerId === "slideshow" || job.providerId === "a1111" || job.providerId === "localai" || job.providerId === "huggingface") {
+  // slideshow = Pollinations free stills; zoro-engine / a1111 / localai / huggingface
+  // fetch the still from their own engine, motion always renders locally with FFmpeg.
+  if (job.providerId === "slideshow" || job.providerId === "zoro-engine" || job.providerId === "a1111" || job.providerId === "localai" || job.providerId === "huggingface") {
     if (!scene) {
       job.status = "failed";
       job.error = "Scene for this job no longer exists (storyboard was replanned).";

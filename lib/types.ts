@@ -142,7 +142,7 @@ export interface Project {
 export interface ProviderInfo {
   id: string;
   label: string;
-  kind: "slideshow" | "worker" | "replicate" | "huggingface" | "hyperframes" | "a1111" | "localai";
+  kind: "slideshow" | "worker" | "replicate" | "huggingface" | "hyperframes" | "a1111" | "localai" | "zoro";
   configured: boolean;
   requiresApiKey: boolean;
   costNote: string;

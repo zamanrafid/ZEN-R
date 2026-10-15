@@ -60,7 +60,7 @@ for higher limits + watermark removal. Free-tier images may carry a watermark.
 
 | Engine | What Zoro uses it for | Needs |
 |---|---|---|
-| AUTOMATIC1111 WebUI | Stills from YOUR SD model (`A1111_URL`, WebUI `--api`), motion local | NVIDIA GPU PC |
+| Zoro Engine (built-in) | 100% own procedural stills + local motion/voice/render — zero key, zero internet | Nothing | Stills from YOUR SD model (`A1111_URL`, WebUI `--api`), motion local | NVIDIA GPU PC |
 | LocalAI | Local stills + local planning via `OPENAI_BASE_URL` | Your hardware |
 | HF diffusers (hosted) | SDXL/SD/FLUX stills, no local GPU (`HF_TOKEN`) | HF account/billing |
 | OpenMontage pattern | Remix pipeline: Shorts -> storyboard (`fromSource:true`) | Nothing (built-in) |

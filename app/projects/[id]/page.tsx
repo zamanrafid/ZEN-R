@@ -677,8 +677,8 @@ export default function Studio({ params }: { params: { id: string } }) {
             const latest = jobs[jobs.length - 1];
             const stillJob = [...jobs].reverse().find((j) => j.providerId === "free-still");
             const chars = s.characterIds.map((cid) => project.characters.find((c) => c.id === cid)).filter(Boolean);
-            const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : project.providerId === "hyperframes" ? "Export Hyperframes scene" : project.providerId === "a1111" ? "Generate clip (A1111 stills + motion)" : project.providerId === "localai" ? "Generate clip (LocalAI stills + motion)" : project.providerId === "huggingface" ? "Generate clip (diffusers stills + motion)" : "Generate clip (paid)";
-            const tag = latest?.providerId === "free-still" ? " (free still)" : latest?.providerId === "slideshow" ? " (free)" : latest?.providerId === "worker" || latest?.providerId === "worker-still" ? " (your model)" : "";
+            const clipLabel = project.providerId === "slideshow" ? "Generate free clip" : project.providerId === "worker" ? "Generate clip (your model)" : project.providerId === "hyperframes" ? "Export Hyperframes scene" : project.providerId === "a1111" ? "Generate clip (A1111 stills + motion)" : project.providerId === "localai" ? "Generate clip (LocalAI stills + motion)" : project.providerId === "huggingface" ? "Generate clip (diffusers stills + motion)" : project.providerId === "zoro-engine" ? "Generate clip (Zoro Engine, offline)" : "Generate clip (paid)";
+            const tag = latest?.providerId === "free-still" ? " (free still)" : latest?.providerId === "slideshow" ? " (free)" : latest?.providerId === "zoro-still" ? " (zoro engine)" : latest?.providerId === "worker" || latest?.providerId === "worker-still" ? " (your model)" : "";
             return (
               <li key={s.id} className="rounded-xl border border-slate-700/80 bg-slate-900/30 p-4 transition-colors hover:border-violet-500/40">
                 <div className="flex flex-wrap items-center justify-between gap-2">

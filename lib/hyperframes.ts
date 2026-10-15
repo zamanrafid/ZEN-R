@@ -192,7 +192,7 @@ export function buildHyperframesHtml(
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=${w}, height=${h}" />
     <meta name="zoro-theme" content="${theme.id}" />
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/gsap.min.js"></script>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
       html, body { margin:0; width:${w}px; height:${h}px; overflow:hidden; background:${theme.bg}; font-family:${theme.titleFont}; }

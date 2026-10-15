@@ -35,6 +35,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   };
 
   // Copy stills + narration next to the composition for offline renders.
+  // GSAP is vendored (public/vendor) so renders work with the internet OFF.
+  try {
+    await fs.copyFile(
+      path.join(process.cwd(), "public", "vendor", "gsap.min.js"),
+      path.join(exportAbs, "assets", "gsap.min.js")
+    );
+  } catch {
+    // Vendor copy failed — composition still references assets/gsap.min.js.
+  }
   for (const sc of p.scenes) {
     if (!sc.stillPath) continue;
     try {
