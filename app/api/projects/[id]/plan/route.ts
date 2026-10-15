@@ -4,18 +4,49 @@ import { NextResponse } from "next/server";
 import { getProject, saveProject } from "@/lib/store";
 import { planWithOptionalLLM } from "@/lib/planner";
 import { providerMaxClip } from "@/lib/providers";
+import { buildRemixScenes, remixNarration } from "@/lib/remix";
 
-/** POST /api/projects/[id]/plan — (re)build the storyboard. Saves title/summary/script/characters/scenes. */
+/** POST /api/projects/[id]/plan — (re)build the storyboard. Saves title/summary/script/characters/scenes.
+ *  Body { fromSource:true } = OpenMontage-style remix: storyboard from YOUR cut Shorts.
+ */
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const p = await getProject(params.id);
   if (!p) return NextResponse.json({ error: "Project not found." }, { status: 404 });
 
-  let body: { prompt?: string; negativePrompt?: string; keepApprovals?: boolean } = {};
+  let body: { prompt?: string; negativePrompt?: string; keepApprovals?: boolean; fromSource?: boolean } = {};
   try {
     body = await req.json();
   } catch {
     // allow empty body → reuse stored prompt
   }
+
+  // ---- Remix pipeline: storyboard from already-cut Shorts (rights-gated at import) ----
+  if (body.fromSource === true) {
+    if (!(p.shorts ?? []).length) {
+      return NextResponse.json(
+        { error: "No Shorts to remix — import a video you own (YouTube/upload) and cut Shorts first." },
+        { status: 400 }
+      );
+    }
+    const scenes = buildRemixScenes(p.shorts, p.name || "Remix");
+    p.scenes = scenes;
+    p.sceneOrder = scenes.map((s) => s.id);
+    p.narrationScript = remixNarration(scenes);
+    for (const j of p.jobs ?? []) {
+      if (j.status === "queued" || j.status === "processing") {
+        j.status = "cancelled";
+        j.error = "Cancelled: storyboard was remixed from source.";
+        j.updatedAt = new Date().toISOString();
+      }
+    }
+    await saveProject(p);
+    return NextResponse.json({
+      project: p,
+      planner: "remix",
+      note: `Remix storyboard ready! ${scenes.length} scenes from your Shorts — recaption, revoice, re-export.`
+    });
+  }
+
   const prompt = (body.prompt ?? p.prompt ?? "").trim();
   if (prompt.length < 10) {
     return NextResponse.json({ error: "Enter a story prompt of at least 10 characters first." }, { status: 400 });

@@ -54,6 +54,30 @@ export const PROVIDER_META: Array<{
     resolutions: ["1080x1920", "1920x1080", "1080x1080"]
   },
   {
+    id: "a1111",
+    label: "A1111 WebUI (your GPU, your SD model, free)",
+    kind: "a1111",
+    requiresApiKey: false,
+    costNote: "FREE (your hardware): stills via your AUTOMATIC1111 WebUI API (launch with --api). Needs NVIDIA GPU for sane speed; CPU works but is very slow.",
+    supportsReferenceImages: true,
+    referenceNote: "Character descriptions go into the prompt; img2img reference is decided by YOUR WebUI setup.",
+    maxClipSec: 5,
+    supportedAspects: ["9:16", "16:9", "1:1"],
+    resolutions: ["768x1344", "1024x576", "768x768"]
+  },
+  {
+    id: "localai",
+    label: "LocalAI (fully local, no key, no account)",
+    kind: "localai",
+    requiresApiKey: false,
+    costNote: "FREE (your hardware): stills via your LocalAI OpenAI-compatible API. Tip: also point OPENAI_BASE_URL at LocalAI for local storyboard planning.",
+    supportsReferenceImages: true,
+    referenceNote: "Character descriptions go into the prompt; behavior depends on the model YOU loaded in LocalAI.",
+    maxClipSec: 5,
+    supportedAspects: ["9:16", "16:9", "1:1"],
+    resolutions: ["server-dependent"]
+  },
+  {
     id: "replicate",
     label: "Replicate (bring your own model)",
     kind: "replicate",
@@ -67,12 +91,12 @@ export const PROVIDER_META: Array<{
   },
   {
     id: "huggingface",
-    label: "Hugging Face Inference Providers",
+    label: "Hugging Face diffusers (hosted SDXL/SD/FLUX stills)",
     kind: "huggingface",
     requiresApiKey: true,
-    costNote: "Requires HF token with Inference permission; usage may bill to your Hugging Face account. Check current plan limits.",
+    costNote: "Hosted diffusers pipelines (no local GPU needed): stills via HF Inference Providers. Check model page + billing; set HF_TOKEN and HF_IMAGE_MODEL.",
     supportsReferenceImages: true,
-    referenceNote: "image-to-video models accept a reference frame; text-to-video models generally do not preserve identity. Never guaranteed.",
+    referenceNote: "Character descriptions go into the prompt. Text-to-video models are NOT wired — stills only, motion comes from Free Movie Mode assembly.",
     maxClipSec: 5,
     supportedAspects: ["9:16", "16:9", "1:1"],
     resolutions: ["model-dependent"]
@@ -101,11 +125,31 @@ export function listProviders(): ProviderInfo[] {
       };
     }
     if (m.id === "huggingface") {
-      const ok = Boolean(process.env.HF_TOKEN && process.env.HF_VIDEO_MODEL);
+      const ok = Boolean(process.env.HF_TOKEN);
       return {
         ...m,
         configured: ok,
-        missing: ok ? undefined : "Set HF_TOKEN and HF_VIDEO_MODEL in .env.local. Verify model, limits and billing on huggingface.co before use."
+        missing: ok ? undefined : "Set HF_TOKEN in .env.local (optional HF_IMAGE_MODEL, default SDXL). Usage may bill to your Hugging Face account — stills only, no video."
+      };
+    }
+    if (m.id === "a1111") {
+      const ok = Boolean(process.env.A1111_URL);
+      return {
+        ...m,
+        configured: ok,
+        missing: ok
+          ? undefined
+          : "A1111_URL is not set. Launch AUTOMATIC1111 WebUI with the --api flag and set A1111_URL (e.g. http://127.0.0.1:7860) in .env.local."
+      };
+    }
+    if (m.id === "localai") {
+      const ok = Boolean(process.env.LOCALAI_URL);
+      return {
+        ...m,
+        configured: ok,
+        missing: ok
+          ? undefined
+          : "LOCALAI_URL is not set. Start LocalAI and set LOCALAI_URL (e.g. http://localhost:8080/v1) in .env.local."
       };
     }
     return { ...m, configured: true };

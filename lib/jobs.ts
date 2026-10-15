@@ -4,6 +4,9 @@ import { dataDir, getProject, saveProject } from "./store";
 import { downloadUrlToMedia, getReplicatePrediction } from "./providers";
 import { fetchStill, isRetriableFreeError } from "./free";
 import { workerPoll, workerStartJob } from "./worker";
+import { fetchA1111Still } from "./a1111";
+import { fetchLocalaiStill } from "./localai";
+import { fetchHfStill } from "./hfimage";
 import { projectQuality, renderStillClip } from "./ffmpeg";
 import type { AspectRatio, GenerationJob, Project, ScenePlan } from "./types";
 
@@ -95,6 +98,33 @@ function extFromUrl(u: string, fallback: string): string {
 }
 
 /** Advance exactly one job and persist. Handles free stills, slideshow clips, replicate. */
+/** Fetch a still from A1111 / LocalAI / HF diffusers. Returns raw bytes + file ext. */
+export async function fetchRemoteStill(
+  kind: "a1111-still" | "localai-still" | "hf-still",
+  p: Project,
+  scene: ScenePlan,
+  seed: number
+): Promise<{ buf: Buffer; ext: string }> {
+  const dims = stillDims(p.settings.aspectRatio, projectQuality(p) === "best");
+  const prompt = stillPromptFor(p, scene);
+  const negative = scene.negativePrompt ?? p.negativePrompt;
+  if (kind === "a1111-still") {
+    return { buf: await fetchA1111Still({ prompt, negativePrompt: negative, ...dims, seed }), ext: "png" };
+  }
+  if (kind === "localai-still") {
+    return { buf: await fetchLocalaiStill({ prompt, ...dims }), ext: "jpg" };
+  }
+  return { buf: await fetchHfStill({ prompt, negativePrompt: negative, ...dims, seed }), ext: "jpg" };
+}
+
+/** Map a movie-pipeline provider to its remote-still kind (null = Pollinations free tier). */
+export function remoteStillKind(p: Project): "a1111-still" | "localai-still" | "hf-still" | null {
+  if (p.providerId === "a1111") return "a1111-still";
+  if (p.providerId === "localai") return "localai-still";
+  if (p.providerId === "huggingface") return "hf-still";
+  return null;
+}
+
 export async function pollOneJob(projectId: string, jobId: string) {
   const p = await getProject(projectId);
   if (!p) return null;
@@ -142,17 +172,63 @@ export async function pollOneJob(projectId: string, jobId: string) {
     return { project: p, job };
   }
 
-  // FREE MOVIE MODE: still (+fetch if needed) then motion render.
-  if (job.providerId === "slideshow") {
+  // REMOTE stills: YOUR A1111 WebUI / YOUR LocalAI / hosted HF diffusers.
+  // All three return raw image bytes → saved exactly like free stills.
+  if (job.providerId === "a1111-still" || job.providerId === "localai-still" || job.providerId === "hf-still") {
+    if (!scene) {
+      job.status = "failed";
+      job.error = "Scene for this job no longer exists (storyboard was replanned).";
+    } else {
+      try {
+        job.status = "processing";
+        job.progress = 30;
+        const seed = job.seed ?? Math.floor(Math.random() * 100000);
+        if (job.providerId === "a1111-still") job.logs.push("Requesting still from YOUR A1111 WebUI…");
+        else if (job.providerId === "localai-still") job.logs.push("Requesting still from YOUR LocalAI…");
+        else job.logs.push("Requesting still from hosted diffusers (HF Inference)…");
+        const { buf, ext } = await fetchRemoteStill(job.providerId, p, scene, seed);
+        await saveStillBuffer(p, scene, job, buf, ext, seed);
+        job.status = "succeeded";
+        job.progress = 100;
+        job.logs.push("Remote still saved. It will be reused for this scene's movie clip.");
+      } catch (e) {
+        job.status = "failed";
+        job.error = e instanceof Error ? e.message : "Remote still failed.";
+        job.logs.push(job.error);
+      }
+    }
+    await saveProject(p);
+    return { project: p, job };
+  }
+
+  // MOVIE PIPELINE: still (+fetch if needed) then motion render.
+  // slideshow = Pollinations free stills; a1111/localai/huggingface fetch the
+  // still from their own engine, motion always renders locally with FFmpeg.
+  if (job.providerId === "slideshow" || job.providerId === "a1111" || job.providerId === "localai" || job.providerId === "huggingface") {
     if (!scene) {
       job.status = "failed";
       job.error = "Scene for this job no longer exists (storyboard was replanned).";
       await saveProject(p);
       return { project: p, job };
     }
+    const remoteKind = remoteStillKind(p);
     try {
       if (!scene.stillPath) {
-        if (!(await claimFreeSlot())) {
+        if (remoteKind) {
+          job.status = "processing";
+          job.progress = 20;
+          job.logs.push(`Fetching AI still (${remoteKind.replace("-still", "")}) for this scene…`);
+          try {
+            const seed = job.seed ?? Math.floor(Math.random() * 100000);
+            const { buf, ext } = await fetchRemoteStill(remoteKind, p, scene, seed);
+            await saveStillBuffer(p, scene, job, buf, ext, seed);
+            job.attempts = 0;
+            job.logs.push("Still ready — rendering motion next poll.");
+            job.progress = 45;
+          } catch (e) {
+            throw e instanceof Error ? e : new Error("Remote still failed.");
+          }
+        } else if (!(await claimFreeSlot())) {
           job.status = "processing";
           job.progress = 10;
           job.logs.push("Waiting for a free-service slot to fetch the scene still…");

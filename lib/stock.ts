@@ -135,6 +135,16 @@ export interface ReferencePack {
 
 export const REFERENCE_PACKS: ReferencePack[] = [
   {
+    id: "toon-panels",
+    label: "Toon Panels / Comic Drama (bold ink, consistent cast)",
+    prompts: [
+      "comic book panel, bold ink outlines, cel shading, hero close-up with speed lines",
+      "toon drama wide panel, vibrant flat colors, expressive faces, dynamic angle",
+      "manga-style emotional beat panel, screentone shading, dramatic lighting"
+    ],
+    negative: "photorealistic, watermark, text, logo, deformed face, extra limbs, blurry"
+  },
+  {
     id: "horror",
     label: "Horror / Mystery (strike-free, AI-generated look)",
     prompts: [

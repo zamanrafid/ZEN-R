@@ -56,6 +56,22 @@ for higher limits + watermark removal. Free-tier images may carry a watermark.
 - File-based project storage (`./data`), media served via `/api/media/*`.
 - Tests: `npm test` (planner, SRT, honesty/schema guards).
 
+## Open-source engine integrations (all optional)
+
+| Engine | What Zoro uses it for | Needs |
+|---|---|---|
+| AUTOMATIC1111 WebUI | Stills from YOUR SD model (`A1111_URL`, WebUI `--api`), motion local | NVIDIA GPU PC |
+| LocalAI | Local stills + local planning via `OPENAI_BASE_URL` | Your hardware |
+| HF diffusers (hosted) | SDXL/SD/FLUX stills, no local GPU (`HF_TOKEN`) | HF account/billing |
+| OpenMontage pattern | Remix pipeline: Shorts -> storyboard (`fromSource:true`) | Nothing (built-in) |
+| Pixelle parity | Topic -> script -> stills -> edge-TTS -> BGM -> MP4, all free | Nothing (built-in) |
+| Toonflow style | `toon-panels` reference pack for comic/drama look | Nothing (built-in) |
+| Khoj | Research your docs/web before scripting (`KHOJ_URL`) | Khoj server |
+| Unsloth | Dataset export (`GET .../dataset` JSONL) — training needs NVIDIA GPU | GPU elsewhere |
+
+AGPL-licensed code (e.g. OpenMontage) is never vendored — only API/pattern-level
+integration, so Zoro stays cleanly licensed.
+
 ## What is NOT free / needs setup
 
 | Feature | Cost / requirement |

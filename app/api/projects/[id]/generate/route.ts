@@ -43,9 +43,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   };
 
   if (kind === "still") {
+    if (p.providerId === "a1111" || p.providerId === "localai" || p.providerId === "huggingface") {
+      const meta = listProviders().find((x) => x.id === p.providerId);
+      if (meta && !meta.configured) {
+        return NextResponse.json(
+          { error: `${meta.label} is not configured. ${meta.missing} Nothing was sent anywhere.` },
+          { status: 409 }
+        );
+      }
+    }
     if (p.providerId === "worker") {
       job.providerId = "worker-still";
       job.logs.push("Still queued on YOUR model server (no third parties).");
+    } else if (p.providerId === "a1111") {
+      job.providerId = "a1111-still";
+      job.logs.push("Still queued on YOUR A1111 WebUI (your GPU, your SD model).");
+    } else if (p.providerId === "localai") {
+      job.providerId = "localai-still";
+      job.logs.push("Still queued on YOUR LocalAI (fully local, no key).");
+    } else if (p.providerId === "huggingface") {
+      job.providerId = "hf-still";
+      job.logs.push("Still queued on hosted diffusers (HF Inference — may bill to your HF account).");
     } else {
       job.logs.push(`Free still queued for scene ${scene.index + 1} (Pollinations, no key). ${freeTierNote()}`);
     }
@@ -58,8 +76,24 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // kind === "video"
   const provider = listProviders().find((x) => x.id === p.providerId) ?? listProviders()[0];
 
-  if (provider.id === "slideshow") {
-    job.logs.push("Free Movie Mode: AI still + cinematic motion, rendered on your PC. No cost, no key.");
+  // Stills + local motion pipeline: slideshow (Pollinations) + remote-still
+  // providers (A1111 / LocalAI / HF diffusers) whose motion renders on your PC.
+  if (provider.id === "slideshow" || provider.id === "a1111" || provider.id === "localai" || provider.id === "huggingface") {
+    if (!provider.configured) {
+      return NextResponse.json(
+        { error: `${provider.label} is not configured. ${provider.missing} Nothing was sent anywhere. Tip: use "Free Movie Mode" for a 100% free pipeline.` },
+        { status: 409 }
+      );
+    }
+    if (provider.id === "slideshow") {
+      job.logs.push("Free Movie Mode: AI still + cinematic motion, rendered on your PC. No cost, no key.");
+    } else if (provider.id === "a1111") {
+      job.logs.push("A1111 Movie: still from YOUR WebUI (your GPU/model) + cinematic motion on your PC. No cost, no key.");
+    } else if (provider.id === "localai") {
+      job.logs.push("LocalAI Movie: still from YOUR LocalAI + cinematic motion on your PC. No cost, no key.");
+    } else {
+      job.logs.push("HF diffusers Movie: still from hosted diffusers (may bill to HF) + free motion on your PC.");
+    }
     p.jobs.push(job);
     await saveProject(p);
     await indexJob(p.id, job.id);
@@ -160,18 +194,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       job.error = e instanceof Error ? e.message : "Replicate request failed.";
       job.logs.push(`Failed before any generation: ${job.error}`);
     }
-    p.jobs.push(job);
-    await saveProject(p);
-    await indexJob(p.id, job.id);
-    return NextResponse.json({ job }, { status: 201 });
-  }
-
-  if (provider.id === "huggingface") {
-    job.status = "failed";
-    job.error =
-      "Hugging Face video adapter is an integration point in this build: set HF_TOKEN and HF_VIDEO_MODEL, " +
-      "then confirm the model's exact router payload on huggingface.co/docs before generating. Nothing was charged.";
-    job.logs.push(job.error);
     p.jobs.push(job);
     await saveProject(p);
     await indexJob(p.id, job.id);
